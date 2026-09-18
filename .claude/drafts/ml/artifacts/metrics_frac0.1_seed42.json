@@ -1,0 +1,170 @@
+{
+  "sample_frac": 0.1,
+  "seed": 42,
+  "rows_total": 96476,
+  "rows_sampled": 9482,
+  "rows_train": 7493,
+  "rows_test": 1989,
+  "sql_sec": 0.152,
+  "dataset_fingerprint": "21d6d61a68f0dbc0b01fa29667fe050b",
+  "positive_rate_all": 0.07097658721788652,
+  "models": {
+    "logreg": {
+      "roc_auc": 0.6670806985847637,
+      "pr_auc": 0.17609874433358375,
+      "accuracy": 0.9281045751633987,
+      "positive_rate_true": 0.07239819004524888,
+      "positive_rate_pred": 0.0015082956259426848,
+      "fit_sec": 0.063,
+      "predict_sec": 0.008,
+      "train_roc_auc": 0.7246047455507069,
+      "top10_coef": [
+        [
+          "customer_state_AL",
+          1.348763419566239
+        ],
+        [
+          "main_product_category_home_confort",
+          1.2528883362422552
+        ],
+        [
+          "main_product_category_home_construction",
+          -1.0438918713421506
+        ],
+        [
+          "main_product_category_pet_shop",
+          -0.9838091969789062
+        ],
+        [
+          "main_product_category_audio",
+          0.9264504023692091
+        ],
+        [
+          "customer_state_RJ",
+          0.8098784058890872
+        ],
+        [
+          "customer_state_SP",
+          -0.7747712032979565
+        ],
+        [
+          "main_product_category_luggage_accessories",
+          -0.729509261558092
+        ],
+        [
+          "estimated_delivery_span_days",
+          -0.7216121108495552
+        ],
+        [
+          "main_product_category_books_general_interest",
+          0.6474224246458522
+        ]
+      ],
+      "top10_permutation": [
+        [
+          "customer_state",
+          0.07054100170631339
+        ],
+        [
+          "estimated_delivery_span_days",
+          0.05611512596607456
+        ],
+        [
+          "customer_seller_distance_km",
+          0.05324575930944501
+        ],
+        [
+          "max_item_weight_g",
+          0.022156980829067658
+        ],
+        [
+          "total_volume_cm3",
+          0.00964819833383527
+        ],
+        [
+          "distinct_sellers_cnt",
+          0.003844223627421539
+        ],
+        [
+          "order_dow",
+          0.0027200642376794537
+        ],
+        [
+          "customer_region",
+          0.0018330322192111614
+        ],
+        [
+          "order_hour",
+          0.0004579443942587987
+        ],
+        [
+          "distinct_products_cnt",
+          -0.0002722573522029685
+        ]
+      ],
+      "perm_sec": 0.392
+    },
+    "hgb": {
+      "roc_auc": 0.740842366757001,
+      "pr_auc": 0.22871828478562517,
+      "accuracy": 0.9245852187028658,
+      "positive_rate_true": 0.07239819004524888,
+      "positive_rate_pred": 0.011060834590246356,
+      "fit_sec": 0.614,
+      "predict_sec": 0.018,
+      "train_roc_auc": 0.9679029825546233,
+      "top10_permutation": [
+        [
+          "purchase_month",
+          0.12279935762320597
+        ],
+        [
+          "customer_state",
+          0.06354888085917909
+        ],
+        [
+          "estimated_delivery_span_days",
+          0.057519070561076045
+        ],
+        [
+          "freight_value",
+          0.013203854260764944
+        ],
+        [
+          "customer_seller_distance_km",
+          0.011825002509284385
+        ],
+        [
+          "order_dow",
+          0.005366104586971916
+        ],
+        [
+          "order_hour",
+          0.002185586670681657
+        ],
+        [
+          "distinct_sellers_cnt",
+          0.0019346582354713056
+        ],
+        [
+          "total_weight_g",
+          0.00173642477165518
+        ],
+        [
+          "max_item_weight_g",
+          0.001400180668473398
+        ]
+      ],
+      "perm_sec": 1.26
+    }
+  },
+  "png_sec": 0.16,
+  "png": [
+    "/private/tmp/claude-501/lanes-02dagster-10a48a75/ml/artifacts/roc_frac0.1_seed42.png",
+    "/private/tmp/claude-501/lanes-02dagster-10a48a75/ml/artifacts/importance_frac0.1_seed42.png"
+  ],
+  "png_bytes": [
+    30616,
+    28627
+  ]
+}

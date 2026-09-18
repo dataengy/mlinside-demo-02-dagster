@@ -1,0 +1,23 @@
+# Точка доставки алертов — Telegram. Секретов в файле нет: Grafana раскрывает
+# ${VAR} из окружения контейнера во всех provisioning-конфигах.
+# Переменные приходят из .env через docker-compose.yml (TG_BOT_TOKEN, TG_CHAT_ID).
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: telegram
+    receivers:
+      - uid: telegram-olist
+        type: telegram
+        # Имена полей именно такие (bottoken/chatid) — это ключи настроек
+        # интеграции Telegram в Grafana, а не произвольные названия.
+        settings:
+          bottoken: ${TG_BOT_TOKEN}
+          # Кавычки обязательны: chat_id группы отрицательный (-100…), без них
+          # значение рискует приехать числом там, где Grafana ждёт строку.
+          chatid: "${TG_CHAT_ID}"
+          disable_web_page_preview: true
+          message: |
+            {{ range .Alerts }}{{ .Status | toUpper }}: {{ .Labels.alertname }}
+            {{ .Annotations.summary }}
+            {{ end }}

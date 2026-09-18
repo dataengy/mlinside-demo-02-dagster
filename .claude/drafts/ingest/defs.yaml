@@ -1,0 +1,50 @@
+# Черновик DltLoadCollectionComponent для источника kaggle_olist (демо 1 v2,
+# PROMPT.md -> "Демо 1 — инициализация проекта и ingest"). Эквивалент
+# dags/integrations_yaml/ingest/defs.yaml в mlinside-dagster-demo, но source
+# параметризован (sample_frac/seed) и качает с Kaggle, а не читает локальные CSV.
+#
+# Финальное место в проекте (перенос основным агентом):
+#   src/olist_ml/defs/ingest/{defs.yaml,loads.py}
+# kaggle_olist_source.py / sampling.py — рядом или в общий модуль пакета,
+# смотря по итоговой структуре; loads.py импортирует их по обычному
+# питоновскому import, а не по относительной ссылке компонента.
+#
+# ПРОВЕРЕНО ПО ДОКУМЕНТАЦИИ dagster-dlt (docs.dagster.io через Context7,
+# подробности и источники — в REPORT.md):
+#  - loads[].source / loads[].pipeline — ссылки вида ".loads.<имя>" на уже
+#    СОЗДАННЫЕ объекты модуля (dlthub_dlt_stargazers_source = github_stargazers(...)
+#    в официальном примере) — то есть вызываются РОВНО ОДИН РАЗ при импорте
+#    defs.yaml, а не на каждый run. Подтверждает вывод задачи: sample_frac
+#    как run-time dg.Config на уровне компонента невозможен — только
+#    env/settings на момент импорта (см. loads.py).
+#  - "/" — стандартный разделитель частей составного AssetKey в строковом
+#    виде (подтверждено на примере asset selection syntax: "my_prefix/raw_data_a"
+#    и key_prefix=["one","two","three"] для Python-декоратора). Однако
+#    буквально "translation.key: '<prefix>/{{ resource.name }}'" для
+#    DltLoadCollectionComponent в документации не встретилось — только
+#    "key: '{{ resource.name }}'" без префикса (как в образце). Поэтому
+#    строка ниже — обоснованное предположение (высокая, не 100% уверенность),
+#    не проверенное запуском `dg check defs` (в LANE нет dagster-проекта с
+#    [tool.dg] для такой проверки). Если строка с "/" не распарсится как
+#    AssetKey(["raw", <table>]) — запасной вариант: список
+#    `key: ["raw", "{{ resource.name }}"]`.
+type: dagster_dlt.DltLoadCollectionComponent
+
+attributes:
+  loads:
+    - source: .loads.kaggle_olist_source_obj
+      pipeline: .loads.kaggle_olist_pipeline_obj
+      translation:
+        # raw/<table> — должен совпасть с ключом dbt-source через
+        # meta.dagster.asset_key (PROMPT.md, "Ключевые требования", п.1).
+        key: "raw/{{ resource.name }}"
+        group_name: raw
+        deps: []
+        # description на каждый ресурс через Jinja-словарь (как в образце)
+        # тут не задан — в образце 2 ресурса, тут 9: инлайн-dict в YAML
+        # становится нечитаемым. Альтернативы, если описание важно для демо:
+        #   (а) тот же приём, что в образце, но на 9 записей;
+        #   (б) @dlt_assets + свой DagsterDltTranslator, читающий
+        #       resource.__doc__ (kaggle_olist_source.py уже выставляет
+        #       __doc__ на каждый ресурс ради этого) — как
+        #       dags/translator.py::DemoDltTranslator в mlinside-dagster-demo.

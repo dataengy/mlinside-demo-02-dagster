@@ -1,0 +1,36 @@
+[20:52:57] === step1-restructure.sh: старт (DRY_RUN=1) ===
+[20:52:57] HW_OLIST=/tmp/claude-501/hw-clone-10a48a75
+[20:52:57] COURSE=/tmp/claude-501/lanes-02dagster-10a48a75/git-split/fake-course-clone
+[20:52:57] DAGSTER_DEMO=/tmp/claude-501/lanes-02dagster-10a48a75/git-split/fake-dagster-demo-clone
+[20:52:57] BACKUP_ROOT=/tmp/claude-501/lanes-02dagster-10a48a75/git-split/test-backup-out/2026-09-18
+[20:52:57] NEW_REPO=dataengy/mlinside-demo  SPLIT_BRANCH=demo-split  SPLIT_CLONE=/tmp/claude-501/test-mlinside-demo-split
+[20:52:57] --- (a) git status в трёх репозиториях ---
+[20:52:57] OK  чисто: mlinside-hw-olist (/tmp/claude-501/hw-clone-10a48a75)
+[20:52:57] OK  чисто: MLInside-course (/tmp/claude-501/lanes-02dagster-10a48a75/git-split/fake-course-clone)
+[20:52:57] OK  чисто: mlinside-dagster-demo (/tmp/claude-501/lanes-02dagster-10a48a75/git-split/fake-dagster-demo-clone)
+[20:52:57] --- (b) резервная копия /tmp/claude-501/hw-clone-10a48a75 -> /tmp/claude-501/lanes-02dagster-10a48a75/git-split/test-backup-out/2026-09-18 ---
+[20:52:57] [DRY-RUN] + mkdir -p /tmp/claude-501/lanes-02dagster-10a48a75/git-split/test-backup-out
+[20:52:57] [DRY-RUN] + cp -R /tmp/claude-501/hw-clone-10a48a75 /tmp/claude-501/lanes-02dagster-10a48a75/git-split/test-backup-out/2026-09-18
+[20:52:57] Доп. лёгкий вариант (не заменяет cp -R, см. PROMPT.md Step1 п.2): git bundle --all
+[20:52:57] [DRY-RUN] + git -C /tmp/claude-501/hw-clone-10a48a75 bundle create /tmp/claude-501/lanes-02dagster-10a48a75/git-split/test-backup-out/2026-09-18.bundle --all
+[20:52:57] --- (c) git subtree split --prefix=demo -b demo-split (в /tmp/claude-501/hw-clone-10a48a75) ---
+[20:52:57] [DRY-RUN] + git -C /tmp/claude-501/hw-clone-10a48a75 subtree split --prefix=demo -b demo-split
+[20:52:57] --- (d) клон ветки demo-split в /tmp/claude-501/test-mlinside-demo-split, переименование в main ---
+[20:52:57] [DRY-RUN] + rm -rf /tmp/claude-501/test-mlinside-demo-split
+[20:52:57] [DRY-RUN] + git clone --branch demo-split --single-branch /tmp/claude-501/hw-clone-10a48a75 /tmp/claude-501/test-mlinside-demo-split
+[20:52:57] [DRY-RUN] + git -C /tmp/claude-501/test-mlinside-demo-split branch -m demo-split main
+[20:52:57] --- (e) gh repo create dataengy/mlinside-demo --public --source=/tmp/claude-501/test-mlinside-demo-split --push ---
+[20:52:57] ERROR: gh auth status провалился:
+    github.com
+      X Failed to log in to github.com account dataengy (keyring)
+      - Active account: true
+      - The token in keyring is invalid.
+      - To re-authenticate, run: gh auth refresh -h github.com
+      - To forget about this account, run: gh auth logout -h github.com -u dataengy
+    
+      X Failed to log in to github.com account hnkovr (keyring)
+      - Active account: false
+      - The token in keyring is invalid.
+      - To re-authenticate, run: gh auth refresh -h github.com
+      - To forget about this account, run: gh auth logout -h github.com -u hnkovr
+[20:52:57] ERROR: gh не авторизован — останавливаемся (PROMPT.md Step1 п.4). Подсказка: gh auth refresh -h github.com

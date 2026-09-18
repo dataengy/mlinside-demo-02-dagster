@@ -1,0 +1,171 @@
+{
+  "uid": "olist-dagster",
+  "title": "Olist — Dagster & ML",
+  "tags": ["olist", "dagster", "mlflow"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {"from": "now-1h", "to": "now"},
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Запуски по статусам (окно экспортера)",
+      "description": "dagster_runs_total — не монотонный счётчик, а число запусков в скользящем окне RUNS_WINDOW_SECONDS.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "custom": {"drawStyle": "bars", "fillOpacity": 60, "stacking": {"mode": "normal"}},
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byRegexp", "options": ".*FAILURE.*"},
+            "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]
+          },
+          {
+            "matcher": {"id": "byRegexp", "options": ".*SUCCESS.*"},
+            "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "green"}}]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum by (status) (dagster_runs_total)",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Длительность последнего запуска, сек",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "fieldConfig": {
+        "defaults": {"unit": "s", "custom": {"drawStyle": "line", "lineWidth": 2, "fillOpacity": 10}},
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "dagster_run_duration_seconds",
+          "legendFormat": "{{job}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "table",
+      "title": "Последние asset checks",
+      "description": "1 = SUCCEEDED, 0 = FAILED / EXECUTION_FAILED / SKIPPED.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {"type": "value", "options": {"1": {"text": "OK", "color": "green", "index": 0}}},
+            {"type": "value", "options": {"0": {"text": "FAILED", "color": "red", "index": 1}}}
+          ],
+          "custom": {"cellOptions": {"type": "color-background"}, "align": "left"}
+        },
+        "overrides": []
+      },
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true, "__name__": true, "instance": true, "job": true}}}
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "dagster_asset_check_last_status",
+          "instant": true,
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Метрика модели (MLflow)",
+      "description": "Значение из последнего run эксперимента; порог дублирует MODEL_METRIC_THRESHOLD из .env.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 1,
+          "custom": {"drawStyle": "line", "lineWidth": 2, "pointSize": 6, "showPoints": "always"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "green", "value": 0.7}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "mlflow_model_metric",
+          "legendFormat": "{{model}} / {{metric}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Свежесть ассетов",
+      "description": "0 HEALTHY · 1 WARNING · 2 DEGRADED · -1 UNKNOWN (ещё не оценено).",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 16},
+      "options": {"textMode": "value_and_name", "colorMode": "background"},
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {"type": "value", "options": {
+              "-1": {"text": "не оценено", "color": "text", "index": 0},
+              "0": {"text": "свежий", "color": "green", "index": 1},
+              "1": {"text": "предупреждение", "color": "yellow", "index": 2},
+              "2": {"text": "протух", "color": "red", "index": 3}
+            }}
+          ]
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "dagster_asset_freshness_status",
+          "instant": true,
+          "legendFormat": "{{asset}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "logs",
+      "title": "Логи Dagster — уровень ERROR",
+      "description": "Метка level появляется из JSON-логов (--log-format json) через stage.labels в Alloy.",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 22},
+      "options": {"showTime": true, "wrapLogMessage": true, "sortOrder": "Descending"},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "{service=~\"dagster-.*\", level=~\"(?i)error|critical\"}"
+        }
+      ]
+    }
+  ]
+}

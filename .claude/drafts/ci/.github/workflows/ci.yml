@@ -1,0 +1,59 @@
+# CI. Вся логика — в Makefile; здесь только вызовы `make <цель>`, один шаг —
+# одна цель. Без секретов и без Kaggle: `make check`/`make test` работают на
+# dbt-seed фикстурах (демо 1, v1) из чистого клона.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: install · check · test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # У setup-uv нет плавающих major-тегов — пин точной версии обязателен
+      # (см. mlinside-dagster-demo/.github/workflows/ci.yml).
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Установка зависимостей
+        run: make install
+
+      - name: dg check defs + ruff check + dbt parse
+        run: make check
+
+      - name: smoke + unit + integration
+        run: make test
+
+  e2e:
+    name: e2e · full_pipeline_job на фикстурах
+    needs: ci
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Установка зависимостей
+        run: make install
+
+      - name: e2e (dg dev в подпроцессе + GraphQL)
+        run: make test-e2e

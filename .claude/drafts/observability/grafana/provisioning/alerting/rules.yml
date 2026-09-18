@@ -1,0 +1,158 @@
+# Четыре правила из ТЗ. Все Grafana-managed, источник — Prometheus.
+#
+# Схема каждого правила одинаковая и это сделано нарочно, чтобы на лекции
+# объяснить её один раз:
+#   A — мгновенный PromQL-запрос (instant: true -> одна точка, reduce не нужен);
+#   B — выражение threshold над A; условие правила (condition) = B.
+# Метки запроса (asset, check, job) сохраняются -> алерты многомерные:
+# сломанный check присылает сообщение про конкретный ассет, а не «что-то упало».
+#
+# noDataState: OK — на старте стенда метрик ещё нет, и «No Data» не должен
+# выглядеть как инцидент. execErrState: OK — по той же причине (Prometheus
+# поднимается позже Grafana).
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: olist
+    folder: Olist
+    interval: 1m
+    rules:
+      # 1. Упавший запуск. Метрика — окно RUNS_WINDOW_SECONDS экспортера,
+      #    поэтому алерт сам гаснет, когда падение уезжает из окна.
+      - uid: olist-run-failed
+        title: Dagster - упал запуск
+        condition: B
+        for: 0s
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: critical
+        annotations:
+          summary: "Запуск джобы {{ $labels.job }} завершился с ошибкой"
+          description: "Открой Dagster UI -> Runs и посмотри последний упавший запуск."
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource: {type: prometheus, uid: prometheus}
+              expr: 'sum by (job) (dagster_runs_total{status="FAILURE"})'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: B
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: gt, params: [0]}
+
+      # 2. Упавший asset check. 1 = SUCCEEDED, 0 = всё остальное.
+      - uid: olist-asset-check-failed
+        title: Dagster - упал asset check
+        condition: B
+        for: 1m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: critical
+        annotations:
+          summary: "Проверка {{ $labels.check }} ассета {{ $labels.asset }} не прошла"
+          description: "Стадия DQ (dq_job) или blocking-check ML. Смотри вкладку Checks у ассета."
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource: {type: prometheus, uid: prometheus}
+              expr: dagster_asset_check_last_status
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: B
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: lt, params: [1]}
+
+      # 3. Нарушена свежесть. Кодировка экспортера:
+      #    0 HEALTHY, 1 WARNING, 2 DEGRADED, -1 UNKNOWN, -2 NOT_APPLICABLE.
+      #    Порог «> 1» ловит только DEGRADED: UNKNOWN уведён в минус специально,
+      #    чтобы «ещё не оценено» не выглядело как «протухло».
+      - uid: olist-freshness-violated
+        title: Dagster - нарушена свежесть ассета
+        condition: B
+        for: 2m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: warning
+        annotations:
+          summary: "Ассет {{ $labels.asset }} не обновлялся дольше fail_window"
+          description: "FreshnessPolicy.time_window; оценивает демон свежести (freshness.enabled в dagster.yaml)."
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource: {type: prometheus, uid: prometheus}
+              expr: dagster_asset_freshness_status
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: B
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: gt, params: [1]}
+
+      # 4. Метрика модели ниже порога.
+      #    Порог продублирован из .env:MODEL_METRIC_THRESHOLD — Grafana не умеет
+      #    подставлять переменную в числовое поле params, только в строковые.
+      #    Меняешь порог в .env — поправь и здесь (см. «Риски» в observability.md).
+      - uid: olist-model-metric-low
+        title: MLflow - метрика модели ниже порога
+        condition: B
+        for: 1m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.metric }} модели {{ $labels.model }} = {{ $values.A }}"
+          description: "Quality gate не выдержан: последний run эксперимента хуже порога 0.7."
+        data:
+          - refId: A
+            relativeTimeRange: {from: 3600, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource: {type: prometheus, uid: prometheus}
+              expr: mlflow_model_metric
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: B
+            relativeTimeRange: {from: 3600, to: 0}
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: lt, params: [0.7]}

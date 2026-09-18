@@ -1,0 +1,170 @@
+{
+  "sample_frac": 1.0,
+  "seed": 42,
+  "rows_total": 96476,
+  "rows_sampled": 96476,
+  "rows_train": 76936,
+  "rows_test": 19540,
+  "sql_sec": 0.137,
+  "dataset_fingerprint": "f710e7b2f27fbd8e5425bcb770c32cb0",
+  "positive_rate_all": 0.06773705377503213,
+  "models": {
+    "logreg": {
+      "roc_auc": 0.6910699379672891,
+      "pr_auc": 0.14589892420553185,
+      "accuracy": 0.9328045035823951,
+      "positive_rate_true": 0.06719549641760492,
+      "positive_rate_pred": 0.0,
+      "fit_sec": 0.515,
+      "predict_sec": 0.027,
+      "train_roc_auc": 0.7045282640381368,
+      "top10_coef": [
+        [
+          "main_product_category_audio",
+          0.8334855315058567
+        ],
+        [
+          "customer_state_SP",
+          -0.80610129437311
+        ],
+        [
+          "main_product_category_construction_tools_safety",
+          -0.7651258720707204
+        ],
+        [
+          "main_product_category_computers",
+          -0.7264445757394768
+        ],
+        [
+          "main_product_category_home_confort",
+          0.6983505994619447
+        ],
+        [
+          "customer_state_RJ",
+          0.6934411802774574
+        ],
+        [
+          "estimated_delivery_span_days",
+          -0.6925857219573051
+        ],
+        [
+          "customer_state_AL",
+          0.6763476275115144
+        ],
+        [
+          "main_product_category_signaling_and_security",
+          -0.6729590971868005
+        ],
+        [
+          "main_product_category_agro_industry_and_commerce",
+          -0.6328204720857566
+        ]
+      ],
+      "top10_permutation": [
+        [
+          "customer_state",
+          0.0999666653448688
+        ],
+        [
+          "estimated_delivery_span_days",
+          0.07587392600269265
+        ],
+        [
+          "customer_seller_distance_km",
+          0.048030442522456585
+        ],
+        [
+          "purchase_month",
+          0.009818297646114785
+        ],
+        [
+          "main_product_category",
+          0.008362718264305902
+        ],
+        [
+          "distinct_sellers_cnt",
+          0.006763356805482272
+        ],
+        [
+          "max_item_weight_g",
+          0.006105967822537732
+        ],
+        [
+          "customer_region",
+          0.003826653497715937
+        ],
+        [
+          "main_payment_type",
+          0.0027777393588204933
+        ],
+        [
+          "total_volume_cm3",
+          0.0009537279803835489
+        ]
+      ],
+      "perm_sec": 1.561
+    },
+    "hgb": {
+      "roc_auc": 0.783575444494916,
+      "pr_auc": 0.2538749937418861,
+      "accuracy": 0.9331627430910951,
+      "positive_rate_true": 0.06719549641760492,
+      "positive_rate_pred": 0.00240532241555783,
+      "fit_sec": 1.52,
+      "predict_sec": 0.08,
+      "train_roc_auc": 0.836462880388947,
+      "top10_permutation": [
+        [
+          "purchase_month",
+          0.139218371491297
+        ],
+        [
+          "customer_state",
+          0.09450589225860047
+        ],
+        [
+          "estimated_delivery_span_days",
+          0.09131026839279266
+        ],
+        [
+          "customer_seller_distance_km",
+          0.025041571517069983
+        ],
+        [
+          "main_product_category",
+          0.007458192084470035
+        ],
+        [
+          "freight_value",
+          0.005563146259382368
+        ],
+        [
+          "distinct_sellers_cnt",
+          0.004663871057269546
+        ],
+        [
+          "main_payment_type",
+          0.002060451623361992
+        ],
+        [
+          "max_item_weight_g",
+          0.0018965013348278086
+        ],
+        [
+          "items_cnt",
+          0.0014523549750638336
+        ]
+      ],
+      "perm_sec": 7.057
+    }
+  },
+  "png_sec": 0.167,
+  "png": [
+    "/private/tmp/claude-501/lanes-02dagster-10a48a75/ml/artifacts/roc_frac1.0_seed42.png",
+    "/private/tmp/claude-501/lanes-02dagster-10a48a75/ml/artifacts/importance_frac1.0_seed42.png"
+  ],
+  "png_bytes": [
+    37238,
+    30154
+  ]
+}

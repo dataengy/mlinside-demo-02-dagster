@@ -1,0 +1,36 @@
+start=2026-09-18T16:58:58Z
+[2mInstalled [1m45 packages[0m [2min 180ms[0m[0m
+DUCKDB_PATH=/tmp/claude-501/olist_ingest_smoke/olist.duckdb
+SAMPLE_FRAC=0.02 SEED=42
+RUN1_SECONDS=5.361
+RUN1_LOAD_INFO=Pipeline kaggle_olist load step finished in 0.33 seconds
+1 load package(s) were loaded to destination duckdb and into dataset olist_raw
+The duckdb destination used duckdb:////tmp/claude-501/olist_ingest_smoke/olist.duckdb location to store data
+Load package 1789750766.7314339 is LOADED and contains no failed jobs
+RUN1_COUNT orders 1885
+RUN1_COUNT order_items 2147
+RUN1_COUNT order_payments 1966
+RUN1_COUNT order_reviews 1884
+RUN1_COUNT customers 1885
+RUN1_COUNT products 1681
+RUN1_COUNT sellers 752
+RUN1_COUNT geolocation 276321
+RUN1_COUNT product_category_name_translation 71
+RUN1_TABLES_PRESENT=False
+RUN2_SECONDS=2.850
+RUN2_LOAD_INFO=Pipeline kaggle_olist load step finished in 0.34 seconds
+1 load package(s) were loaded to destination duckdb and into dataset olist_raw
+The duckdb destination used duckdb:////tmp/claude-501/olist_ingest_smoke/olist.duckdb location to store data
+Load package 1789750771.245901 is LOADED and contains no failed jobs
+RUN2_COUNT orders 1885 MATCH=True
+RUN2_COUNT order_items 2147 MATCH=True
+RUN2_COUNT order_payments 1966 MATCH=True
+RUN2_COUNT order_reviews 1884 MATCH=True
+RUN2_COUNT customers 1885 MATCH=True
+RUN2_COUNT products 1681 MATCH=True
+RUN2_COUNT sellers 752 MATCH=True
+RUN2_COUNT geolocation 276321 MATCH=True
+RUN2_COUNT product_category_name_translation 71 MATCH=True
+IDEMPOTENT_REPLACE=True
+PYTHON_EXIT_CODE=0
+end=2026-09-18T16:59:31Z

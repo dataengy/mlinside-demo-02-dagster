@@ -1,0 +1,246 @@
+ D demo/01-dbt/.claude/.bak/DEMO-01-quickstart.md
+ D demo/01-dbt/.claude/.bak/DEMO-02-docs-tests-packages.md
+ D demo/01-dbt/.claude/.bak/readme.md
+ D demo/01-dbt/.claude/.stash/.gitlab-ci.yml
+ D demo/01-dbt/.claude/.stash/package-lock.yml
+ D demo/01-dbt/.github/workflows/ci.yml
+ M demo/01-dbt/.gitignore
+ D demo/01-dbt/.pre-commit-config.yaml
+ D demo/01-dbt/.sqlfluff-duckdb
+ D demo/01-dbt/.sqlfluffignore
+ D demo/01-dbt/Makefile
+ D demo/01-dbt/README.md
+A  demo/01-dbt/analyses/.gitkeep
+ D demo/01-dbt/config/config.yml
+ D demo/01-dbt/data/sample/.gitkeep
+ D demo/01-dbt/data/sample/olist_customers_dataset.csv.gz
+ D demo/01-dbt/data/sample/olist_geolocation_dataset.csv.gz
+ D demo/01-dbt/data/sample/olist_order_items_dataset.csv.gz
+ D demo/01-dbt/data/sample/olist_order_payments_dataset.csv.gz
+ D demo/01-dbt/data/sample/olist_order_reviews_dataset.csv.gz
+ D demo/01-dbt/data/sample/olist_orders_dataset.csv.gz
+ D demo/01-dbt/data/sample/olist_products_dataset.csv.gz
+ D demo/01-dbt/data/sample/olist_sellers_dataset.csv.gz
+ D demo/01-dbt/dbt-empty/.env.demo
+MD demo/01-dbt/dbt-empty/.gitignore
+AD demo/01-dbt/dbt-empty/.tmp/.env.demo
+AD demo/01-dbt/dbt-empty/.tmp/.gitignore
+AD demo/01-dbt/dbt-empty/.tmp/dbt_project.yml
+AD demo/01-dbt/dbt-empty/.tmp/macros/ch_table_config.sql
+AD demo/01-dbt/dbt-empty/.tmp/macros/cross_db/count_if.sql
+AD demo/01-dbt/dbt-empty/.tmp/macros/cross_db/date_parts.sql
+AD demo/01-dbt/dbt-empty/.tmp/macros/cross_db/percentile.sql
+AD demo/01-dbt/dbt-empty/.tmp/macros/cross_db/safe_div.sql
+AD demo/01-dbt/dbt-empty/.tmp/macros/cross_db/string_agg_distinct.sql
+AD demo/01-dbt/dbt-empty/.tmp/macros/haversine_km.sql
+AD demo/01-dbt/dbt-empty/.tmp/macros/price_bucket.sql
+AD demo/01-dbt/dbt-empty/.tmp/models/intermediate/_intermediate__models.yml
+AD demo/01-dbt/dbt-empty/.tmp/models/intermediate/int_order_distance.sql
+AD demo/01-dbt/dbt-empty/.tmp/models/intermediate/int_order_items_enriched.sql
+AD demo/01-dbt/dbt-empty/.tmp/models/intermediate/int_orders_enriched.sql
+AD demo/01-dbt/dbt-empty/.tmp/models/marts/_marts__models.yml
+AD demo/01-dbt/dbt-empty/.tmp/models/marts/mart_customer_value_profile.sql
+AD demo/01-dbt/dbt-empty/.tmp/models/marts/mart_daily_state_metrics.sql
+AD demo/01-dbt/dbt-empty/.tmp/models/marts/mart_delivery_quality_by_category.sql
+AD demo/01-dbt/dbt-empty/.tmp/models/marts/mart_delivery_quality_by_state.sql
+AD demo/01-dbt/dbt-empty/.tmp/models/marts/mart_hourly_order_pattern.sql
+AD demo/01-dbt/dbt-empty/.tmp/models/marts/mart_seller_analytics.sql
+AD demo/01-dbt/dbt-empty/.tmp/models/sources/sources.yml
+AD demo/01-dbt/dbt-empty/.tmp/models/staging/_staging__models.yml
+AD demo/01-dbt/dbt-empty/.tmp/models/staging/stg_customers.sql
+AD demo/01-dbt/dbt-empty/.tmp/models/staging/stg_geolocation.sql
+AD demo/01-dbt/dbt-empty/.tmp/models/staging/stg_order_items.sql
+AD demo/01-dbt/dbt-empty/.tmp/models/staging/stg_order_payments.sql
+AD demo/01-dbt/dbt-empty/.tmp/models/staging/stg_order_reviews.sql
+AD demo/01-dbt/dbt-empty/.tmp/models/staging/stg_orders.sql
+AD demo/01-dbt/dbt-empty/.tmp/models/staging/stg_products.sql
+AD demo/01-dbt/dbt-empty/.tmp/models/staging/stg_sellers.sql
+AD demo/01-dbt/dbt-empty/.tmp/packages.yml
+AD demo/01-dbt/dbt-empty/.tmp/profiles.yml
+AD demo/01-dbt/dbt-empty/.tmp/seeds/olist_customers_dataset.csv
+AD demo/01-dbt/dbt-empty/.tmp/seeds/olist_geolocation_dataset.csv
+AD demo/01-dbt/dbt-empty/.tmp/seeds/olist_order_items_dataset.csv
+AD demo/01-dbt/dbt-empty/.tmp/seeds/olist_order_payments_dataset.csv
+AD demo/01-dbt/dbt-empty/.tmp/seeds/olist_order_reviews_dataset.csv
+AD demo/01-dbt/dbt-empty/.tmp/seeds/olist_orders_dataset.csv
+AD demo/01-dbt/dbt-empty/.tmp/seeds/olist_products_dataset.csv
+AD demo/01-dbt/dbt-empty/.tmp/seeds/olist_sellers_dataset.csv
+AD demo/01-dbt/dbt-empty/.tmp/seeds/product_category_name_translation.csv
+AD demo/01-dbt/dbt-empty/.tmp/seeds/seed_state_region.csv
+AD demo/01-dbt/dbt-empty/.tmp/seeds/seeds.yml
+AD demo/01-dbt/dbt-empty/.tmp/tests/assert_delivery_after_purchase.sql
+AD demo/01-dbt/dbt-empty/.tmp/tests/assert_no_negative_amounts.sql
+AD demo/01-dbt/dbt-empty/.tmp/tests/assert_order_revenue_reconciles.sql
+AD demo/01-dbt/dbt-empty/.tmp/tests/assert_rates_within_bounds.sql
+AD demo/01-dbt/dbt-empty/.tmp/unit_tests/_unit_tests.yml
+AD demo/01-dbt/dbt-empty/.user.yml
+D  demo/01-dbt/dbt-empty/Makefile
+MD demo/01-dbt/dbt-empty/dbt_project.yml
+ D demo/01-dbt/dbt-empty/macros/ch_table_config.sql
+ D demo/01-dbt/dbt-empty/macros/cross_db/count_if.sql
+ D demo/01-dbt/dbt-empty/macros/cross_db/date_parts.sql
+ D demo/01-dbt/dbt-empty/macros/cross_db/percentile.sql
+ D demo/01-dbt/dbt-empty/macros/cross_db/safe_div.sql
+ D demo/01-dbt/dbt-empty/macros/cross_db/string_agg_distinct.sql
+ D demo/01-dbt/dbt-empty/macros/haversine_km.sql
+ D demo/01-dbt/dbt-empty/macros/price_bucket.sql
+ D demo/01-dbt/dbt-empty/models/intermediate/_intermediate__models.yml
+ D demo/01-dbt/dbt-empty/models/intermediate/int_order_distance.sql
+ D demo/01-dbt/dbt-empty/models/intermediate/int_order_items_enriched.sql
+ D demo/01-dbt/dbt-empty/models/intermediate/int_orders_enriched.sql
+ D demo/01-dbt/dbt-empty/models/marts/_marts__models.yml
+ D demo/01-dbt/dbt-empty/models/marts/mart_customer_value_profile.sql
+ D demo/01-dbt/dbt-empty/models/marts/mart_daily_state_metrics.sql
+ D demo/01-dbt/dbt-empty/models/marts/mart_delivery_quality_by_category.sql
+ D demo/01-dbt/dbt-empty/models/marts/mart_delivery_quality_by_state.sql
+ D demo/01-dbt/dbt-empty/models/marts/mart_hourly_order_pattern.sql
+ D demo/01-dbt/dbt-empty/models/marts/mart_seller_analytics.sql
+ D demo/01-dbt/dbt-empty/models/sources/sources.yml
+ D demo/01-dbt/dbt-empty/models/staging/_staging__models.yml
+ D demo/01-dbt/dbt-empty/models/staging/stg_customers.sql
+ D demo/01-dbt/dbt-empty/models/staging/stg_geolocation.sql
+ D demo/01-dbt/dbt-empty/models/staging/stg_order_items.sql
+ D demo/01-dbt/dbt-empty/models/staging/stg_order_payments.sql
+ D demo/01-dbt/dbt-empty/models/staging/stg_order_reviews.sql
+ D demo/01-dbt/dbt-empty/models/staging/stg_orders.sql
+ D demo/01-dbt/dbt-empty/models/staging/stg_products.sql
+ D demo/01-dbt/dbt-empty/models/staging/stg_sellers.sql
+AD demo/01-dbt/dbt-empty/olist.duckdb
+D  demo/01-dbt/dbt-empty/package-lock.yml
+ D demo/01-dbt/dbt-empty/packages.yml
+ D demo/01-dbt/dbt-empty/profiles.yml
+AD demo/01-dbt/dbt-empty/seeds/olist_customers_dataset.csv
+AD demo/01-dbt/dbt-empty/seeds/olist_geolocation_dataset.csv
+AD demo/01-dbt/dbt-empty/seeds/olist_order_items_dataset.csv
+AD demo/01-dbt/dbt-empty/seeds/olist_order_payments_dataset.csv
+AD demo/01-dbt/dbt-empty/seeds/olist_order_reviews_dataset.csv
+AD demo/01-dbt/dbt-empty/seeds/olist_orders_dataset.csv
+AD demo/01-dbt/dbt-empty/seeds/olist_products_dataset.csv
+AD demo/01-dbt/dbt-empty/seeds/olist_sellers_dataset.csv
+MD demo/01-dbt/dbt-empty/seeds/product_category_name_translation.csv
+ D demo/01-dbt/dbt-empty/seeds/seed_state_region.csv
+ D demo/01-dbt/dbt-empty/seeds/seeds.yml
+ D demo/01-dbt/dbt-empty/tests/assert_delivery_after_purchase.sql
+ D demo/01-dbt/dbt-empty/tests/assert_no_negative_amounts.sql
+ D demo/01-dbt/dbt-empty/tests/assert_order_revenue_reconciles.sql
+ D demo/01-dbt/dbt-empty/tests/assert_rates_within_bounds.sql
+ D demo/01-dbt/dbt-empty/unit_tests/_unit_tests.yml
+ D demo/01-dbt/dbt-project/.env.demo
+ D demo/01-dbt/dbt-project/.gitignore
+ D demo/01-dbt/dbt-project/dbt_project.yml
+ D demo/01-dbt/dbt-project/macros/ch_table_config.sql
+ D demo/01-dbt/dbt-project/macros/cross_db/count_if.sql
+ D demo/01-dbt/dbt-project/macros/cross_db/date_parts.sql
+ D demo/01-dbt/dbt-project/macros/cross_db/percentile.sql
+ D demo/01-dbt/dbt-project/macros/cross_db/safe_div.sql
+ D demo/01-dbt/dbt-project/macros/cross_db/string_agg_distinct.sql
+ D demo/01-dbt/dbt-project/macros/haversine_km.sql
+ D demo/01-dbt/dbt-project/macros/price_bucket.sql
+ D demo/01-dbt/dbt-project/models/intermediate/_intermediate__models.yml
+ D demo/01-dbt/dbt-project/models/intermediate/int_order_distance.sql
+ D demo/01-dbt/dbt-project/models/intermediate/int_order_items_enriched.sql
+ D demo/01-dbt/dbt-project/models/intermediate/int_orders_enriched.sql
+ D demo/01-dbt/dbt-project/models/marts/_marts__models.yml
+ D demo/01-dbt/dbt-project/models/marts/mart_customer_value_profile.sql
+ D demo/01-dbt/dbt-project/models/marts/mart_daily_state_metrics.sql
+ D demo/01-dbt/dbt-project/models/marts/mart_delivery_quality_by_category.sql
+ D demo/01-dbt/dbt-project/models/marts/mart_delivery_quality_by_state.sql
+ D demo/01-dbt/dbt-project/models/marts/mart_hourly_order_pattern.sql
+ D demo/01-dbt/dbt-project/models/marts/mart_seller_analytics.sql
+ D demo/01-dbt/dbt-project/models/sources/sources.yml
+ D demo/01-dbt/dbt-project/models/staging/_staging__models.yml
+ D demo/01-dbt/dbt-project/models/staging/stg_customers.sql
+ D demo/01-dbt/dbt-project/models/staging/stg_geolocation.sql
+ D demo/01-dbt/dbt-project/models/staging/stg_order_items.sql
+ D demo/01-dbt/dbt-project/models/staging/stg_order_payments.sql
+ D demo/01-dbt/dbt-project/models/staging/stg_order_reviews.sql
+ D demo/01-dbt/dbt-project/models/staging/stg_orders.sql
+ D demo/01-dbt/dbt-project/models/staging/stg_products.sql
+ D demo/01-dbt/dbt-project/models/staging/stg_sellers.sql
+ D demo/01-dbt/dbt-project/packages.yml
+ D demo/01-dbt/dbt-project/profiles.yml
+AD demo/01-dbt/dbt-project/seeds/olist_customers_dataset.csv
+AD demo/01-dbt/dbt-project/seeds/olist_geolocation_dataset.csv
+AD demo/01-dbt/dbt-project/seeds/olist_order_items_dataset.csv
+AD demo/01-dbt/dbt-project/seeds/olist_order_payments_dataset.csv
+AD demo/01-dbt/dbt-project/seeds/olist_order_reviews_dataset.csv
+AD demo/01-dbt/dbt-project/seeds/olist_orders_dataset.csv
+AD demo/01-dbt/dbt-project/seeds/olist_products_dataset.csv
+AD demo/01-dbt/dbt-project/seeds/olist_sellers_dataset.csv
+ D demo/01-dbt/dbt-project/seeds/product_category_name_translation.csv
+ D demo/01-dbt/dbt-project/seeds/seed_state_region.csv
+ D demo/01-dbt/dbt-project/seeds/seeds.yml
+ D demo/01-dbt/dbt-project/tests/assert_delivery_after_purchase.sql
+ D demo/01-dbt/dbt-project/tests/assert_no_negative_amounts.sql
+ D demo/01-dbt/dbt-project/tests/assert_order_revenue_reconciles.sql
+ D demo/01-dbt/dbt-project/tests/assert_rates_within_bounds.sql
+ D demo/01-dbt/dbt-project/unit_tests/_unit_tests.yml
+ D demo/01-dbt/dbt/analyses/.gitkeep
+ D demo/01-dbt/dbt/package-lock.yml
+A  demo/01-dbt/dbt_project.yml
+ D demo/01-dbt/docs/AGENTS.md
+ D demo/01-dbt/docs/CLAUDE.md
+ D demo/01-dbt/docs/DEMO-01-quickstart.md
+ D demo/01-dbt/docs/DEMO-02-docs-tests-packages.md
+ D demo/01-dbt/docs/DEMO-03-agentic.md
+ D demo/01-dbt/docs/img/dbt-build-broken-seed.png
+ D demo/01-dbt/docs/img/dbt-dag-duck.png
+ D demo/01-dbt/docs/img/dbt-model-mart-daily-state-metrics.png
+A  demo/01-dbt/macros/ch_table_config.sql
+A  demo/01-dbt/macros/cross_db/count_if.sql
+A  demo/01-dbt/macros/cross_db/date_parts.sql
+A  demo/01-dbt/macros/cross_db/percentile.sql
+A  demo/01-dbt/macros/cross_db/safe_div.sql
+A  demo/01-dbt/macros/cross_db/string_agg_distinct.sql
+A  demo/01-dbt/macros/haversine_km.sql
+A  demo/01-dbt/macros/price_bucket.sql
+A  demo/01-dbt/models/intermediate/_intermediate__models.yml
+A  demo/01-dbt/models/intermediate/int_order_distance.sql
+A  demo/01-dbt/models/intermediate/int_order_items_enriched.sql
+A  demo/01-dbt/models/intermediate/int_orders_enriched.sql
+A  demo/01-dbt/models/marts/_marts__models.yml
+A  demo/01-dbt/models/marts/mart_customer_value_profile.sql
+A  demo/01-dbt/models/marts/mart_daily_state_metrics.sql
+A  demo/01-dbt/models/marts/mart_delivery_quality_by_category.sql
+A  demo/01-dbt/models/marts/mart_delivery_quality_by_state.sql
+A  demo/01-dbt/models/marts/mart_hourly_order_pattern.sql
+A  demo/01-dbt/models/marts/mart_seller_analytics.sql
+A  demo/01-dbt/models/py/my_python_model.py
+A  demo/01-dbt/models/sources/sources.yml
+A  demo/01-dbt/models/staging/_staging__models.yml
+A  demo/01-dbt/models/staging/stg_customers.sql
+A  demo/01-dbt/models/staging/stg_geolocation.sql
+A  demo/01-dbt/models/staging/stg_order_items.sql
+A  demo/01-dbt/models/staging/stg_order_payments.sql
+A  demo/01-dbt/models/staging/stg_order_reviews.sql
+A  demo/01-dbt/models/staging/stg_orders.sql
+A  demo/01-dbt/models/staging/stg_products.sql
+A  demo/01-dbt/models/staging/stg_sellers.sql
+A  demo/01-dbt/packages.yml
+A  demo/01-dbt/profiles.yml
+ D demo/01-dbt/pyproject.toml
+ D demo/01-dbt/scripts/check_models_documented.py
+ D demo/01-dbt/scripts/load_duckdb.py
+ D demo/01-dbt/scripts/utils.py
+A  demo/01-dbt/seeds/olist_customers_dataset.csv
+A  demo/01-dbt/seeds/olist_geolocation_dataset.csv
+A  demo/01-dbt/seeds/olist_order_items_dataset.csv
+A  demo/01-dbt/seeds/olist_order_payments_dataset.csv
+A  demo/01-dbt/seeds/olist_order_reviews_dataset.csv
+A  demo/01-dbt/seeds/olist_orders_dataset.csv
+A  demo/01-dbt/seeds/olist_products_dataset.csv
+A  demo/01-dbt/seeds/olist_sellers_dataset.csv
+A  demo/01-dbt/seeds/product_category_name_translation.csv
+A  demo/01-dbt/seeds/seed_state_region.csv
+A  demo/01-dbt/seeds/seeds.yml
+A  demo/01-dbt/tests/assert_delivery_after_purchase.sql
+A  demo/01-dbt/tests/assert_no_negative_amounts.sql
+A  demo/01-dbt/tests/assert_order_revenue_reconciles.sql
+A  demo/01-dbt/tests/assert_rates_within_bounds.sql
+A  demo/01-dbt/unit_tests/_unit_tests.yml
+ D demo/01-dbt/uv.lock
+?? demo/01-dbt/.env.demo
+?? demo/01-dbt/.user.yml
+?? demo/01-dbt/olist.duckdb
+?? demo/01-dbt/package-lock.yml
+?? demo/02-dagster/

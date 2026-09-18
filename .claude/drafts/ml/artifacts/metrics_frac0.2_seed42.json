@@ -1,0 +1,170 @@
+{
+  "sample_frac": 0.2,
+  "seed": 42,
+  "rows_total": 96476,
+  "rows_sampled": 18983,
+  "rows_train": 15056,
+  "rows_test": 3927,
+  "sql_sec": 0.14,
+  "dataset_fingerprint": "9f92cc7aef793ad11d938f67cc754790",
+  "positive_rate_all": 0.0682189327292841,
+  "models": {
+    "logreg": {
+      "roc_auc": 0.6751803158951886,
+      "pr_auc": 0.14911564718765152,
+      "accuracy": 0.9297173414820473,
+      "positive_rate_true": 0.07028265851795264,
+      "positive_rate_pred": 0.0,
+      "fit_sec": 0.106,
+      "predict_sec": 0.01,
+      "train_roc_auc": 0.7107756641759131,
+      "top10_coef": [
+        [
+          "customer_state_AL",
+          1.4106797420463897
+        ],
+        [
+          "main_product_category_luggage_accessories",
+          -1.1117621559352433
+        ],
+        [
+          "main_product_category_computers",
+          -0.9904268429990686
+        ],
+        [
+          "main_product_category_audio",
+          0.9810967545866919
+        ],
+        [
+          "customer_state_RO",
+          -0.8613549785860231
+        ],
+        [
+          "main_product_category_air_conditioning",
+          -0.8248272966909532
+        ],
+        [
+          "main_product_category_home_confort",
+          0.784565514897494
+        ],
+        [
+          "main_product_category_home_construction",
+          -0.7757581762325853
+        ],
+        [
+          "customer_state_SP",
+          -0.7753662405238901
+        ],
+        [
+          "customer_state_RJ",
+          0.7718480450771913
+        ]
+      ],
+      "top10_permutation": [
+        [
+          "customer_state",
+          0.10212839576742268
+        ],
+        [
+          "estimated_delivery_span_days",
+          0.05856909032929902
+        ],
+        [
+          "max_item_weight_g",
+          0.0444382255142857
+        ],
+        [
+          "customer_seller_distance_km",
+          0.043304263142782684
+        ],
+        [
+          "distinct_sellers_cnt",
+          0.012376994192577836
+        ],
+        [
+          "total_volume_cm3",
+          0.0063707646770060355
+        ],
+        [
+          "total_weight_g",
+          0.0052913833414709455
+        ],
+        [
+          "main_product_category",
+          0.003648328761758135
+        ],
+        [
+          "main_payment_type",
+          0.0013261537769416003
+        ],
+        [
+          "distinct_products_cnt",
+          0.0012540406506324302
+        ]
+      ],
+      "perm_sec": 0.516
+    },
+    "hgb": {
+      "roc_auc": 0.7822355598426478,
+      "pr_auc": 0.2517148796440809,
+      "accuracy": 0.9299719887955182,
+      "positive_rate_true": 0.07028265851795264,
+      "positive_rate_pred": 0.0033104150751209573,
+      "fit_sec": 0.622,
+      "predict_sec": 0.024,
+      "train_roc_auc": 0.9238775791136045,
+      "top10_permutation": [
+        [
+          "purchase_month",
+          0.1463056246915344
+        ],
+        [
+          "customer_state",
+          0.07780162803652495
+        ],
+        [
+          "estimated_delivery_span_days",
+          0.07550674356969234
+        ],
+        [
+          "customer_seller_distance_km",
+          0.02349068549811632
+        ],
+        [
+          "freight_value",
+          0.01305346824442244
+        ],
+        [
+          "main_product_category",
+          0.008074354587519409
+        ],
+        [
+          "distinct_sellers_cnt",
+          0.007675747627875078
+        ],
+        [
+          "main_payment_type",
+          0.005621846704694751
+        ],
+        [
+          "max_item_weight_g",
+          0.004039658249940126
+        ],
+        [
+          "order_value",
+          0.0031749623225455124
+        ]
+      ],
+      "perm_sec": 1.843
+    }
+  },
+  "png_sec": 0.157,
+  "png": [
+    "/private/tmp/claude-501/lanes-02dagster-10a48a75/ml/artifacts/roc_frac0.2_seed42.png",
+    "/private/tmp/claude-501/lanes-02dagster-10a48a75/ml/artifacts/importance_frac0.2_seed42.png"
+  ],
+  "png_bytes": [
+    31716,
+    30292
+  ]
+}

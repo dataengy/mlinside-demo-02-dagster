@@ -1,0 +1,16 @@
+[1m============================= test session starts ==============================[0m
+platform darwin -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0 -- /Users/user/.cache/uv/builds-v0/.tmpGcxb9Q/bin/python
+cachedir: .pytest_cache
+rootdir: /tmp/claude-501/lanes-02dagster-10a48a75/ingest
+[1mcollecting ... [0mcollected 8 items
+
+../../../../../../../tmp/claude-501/lanes-02dagster-10a48a75/ingest/test_sampling.py::test_connectivity_items_payments_reviews_reference_selected_orders [32mPASSED[0m[32m [ 12%][0m
+../../../../../../../tmp/claude-501/lanes-02dagster-10a48a75/ingest/test_sampling.py::test_customers_products_sellers_present_for_selected_orders [32mPASSED[0m[32m [ 25%][0m
+../../../../../../../tmp/claude-501/lanes-02dagster-10a48a75/ingest/test_sampling.py::test_geolocation_restricted_to_referenced_zip_prefixes [32mPASSED[0m[32m [ 37%][0m
+../../../../../../../tmp/claude-501/lanes-02dagster-10a48a75/ingest/test_sampling.py::test_frac_one_keeps_everything [32mPASSED[0m[32m [ 50%][0m
+../../../../../../../tmp/claude-501/lanes-02dagster-10a48a75/ingest/test_sampling.py::test_deterministic_same_seed_same_selection [32mPASSED[0m[32m [ 62%][0m
+../../../../../../../tmp/claude-501/lanes-02dagster-10a48a75/ingest/test_sampling.py::test_different_seed_can_change_selection [32mPASSED[0m[32m [ 75%][0m
+../../../../../../../tmp/claude-501/lanes-02dagster-10a48a75/ingest/test_sampling.py::test_invalid_frac_raises [32mPASSED[0m[32m [ 87%][0m
+../../../../../../../tmp/claude-501/lanes-02dagster-10a48a75/ingest/test_sampling.py::test_missing_orders_key_raises [32mPASSED[0m[32m [100%][0m
+
+[32m============================== [32m[1m8 passed[0m[32m in 0.42s[0m[32m ===============================[0m

@@ -1,0 +1,70 @@
+// Alloy: сбор логов контейнеров этого compose-проекта -> Loki.
+// Метрики Alloy НЕ трогает: Prometheus скрейпит экспортер сам (см. ADR-4)  —
+// лишний хоп и remote-write receiver ради одной цели не нужны.
+
+// 1. Находим контейнеры. Фильтр по метке compose, чтобы в Loki не попали
+//    посторонние контейнеры, запущенные на той же машине.
+discovery.docker "compose" {
+	host             = "unix:///var/run/docker.sock"
+	refresh_interval = "15s"
+
+	filter {
+		name   = "label"
+		// sys.env — актуальное имя функции в Alloy 1.x (старое `env` устарело).
+		values = ["com.docker.compose.project=" + coalesce(sys.env("COMPOSE_PROJECT_NAME"), "02-dagster")]
+	}
+}
+
+// 2. Превращаем служебные __meta_*-метки в человеческие: service и container.
+//    service — имя сервиса из compose (dagster-daemon, mlflow, ...), по нему
+//    строятся панели и алерты; на него же завязан LogQL в дашборде.
+discovery.relabel "compose" {
+	targets = discovery.docker.compose.targets
+
+	rule {
+		source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+		target_label  = "service"
+	}
+
+	rule {
+		source_labels = ["__meta_docker_container_name"]
+		regex         = "/(.*)"
+		target_label  = "container"
+	}
+
+	rule {
+		source_labels = ["__meta_docker_container_log_stream"]
+		target_label  = "stream"
+	}
+}
+
+// 3. Читаем лог-стримы прямо у демона Docker — без монтирования
+//    /var/lib/docker/containers (на macOS этот путь живёт внутри VM и хосту
+//    недоступен; из-за этого filelog-receiver OTel Collector'а тут не работает).
+loki.source.docker "compose" {
+	host       = "unix:///var/run/docker.sock"
+	targets    = discovery.relabel.compose.output
+	labels     = {job = "docker"}
+	forward_to = [loki.process.dagster.receiver]
+}
+
+// 4. Логи webserver/daemon идут в JSON (флаг --log-format json): вынимаем
+//    уровень в метку, чтобы фильтр ERROR в Grafana был по метке, а не по regex.
+//    Для не-JSON строк (mlflow, postgres) stage просто ничего не делает.
+loki.process "dagster" {
+	forward_to = [loki.write.default.receiver]
+
+	stage.json {
+		expressions = {level = "level"}
+	}
+
+	stage.labels {
+		values = {level = ""}
+	}
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
+}

@@ -1,0 +1,47 @@
+# Держим контекст сборки маленьким и не тащим в образ локальное состояние/секреты.
+# dbt/seeds/ (нужны dbt build) и dbt/models/ и т.п. НЕ исключаем — только
+# сгенерированные артефакты dbt ниже.
+
+.git
+.github
+.claude
+.idea
+.vscode
+.DS_Store
+
+# локальные рантайм-каталоги (см. .env.example)
+.venv
+.dagster_home
+.kagglehub_cache
+mlruns
+mlflow.db
+
+# секреты и локальный конфиг — в образ не идут, значения приходят из env docker-compose
+.env
+.env.*
+
+# данные: сэмплы/сырьё скачиваются в рантайме, не нужны в образе
+data/raw/*
+!data/raw/.gitkeep
+
+# сгенерированные артефакты dbt (manifest пересобирается в builder-стадии)
+dbt/target
+dbt/dbt_packages
+dbt/logs
+
+# тесты/доки/наблюдаемость — не нужны рантайм-образу
+tests
+docs
+observability
+scripts/__pycache__
+
+# кеши и байткод
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.ruff_cache
+
+# сама сборка (не нужны внутри контекста рекурсивно)
+Dockerfile
+docker-compose*.yml
+.dockerignore

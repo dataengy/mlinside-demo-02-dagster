@@ -1,0 +1,20 @@
+# Источники данных. URL берутся из окружения контейнера Grafana:
+# в provisioning-файлах Grafana раскрывает $VAR и ${VAR}.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: ${PROMETHEUS_URL}
+    isDefault: true
+    jsonData:
+      # Должен совпадать со scrape_interval, иначе rate()/increase() врут.
+      timeInterval: 15s
+
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: ${LOKI_URL}

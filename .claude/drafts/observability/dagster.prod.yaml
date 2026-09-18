@@ -1,0 +1,87 @@
+# Инстанс Dagster для Docker Compose (prod-подобный стенд демо 4).
+# Монтируется в $DAGSTER_HOME/dagster.yaml контейнеров webserver и daemon.
+# Отличие от dev-конфига (config/dagster/dagster.yaml) — только storage и
+# run_coordinator; см. «dev vs prod» в docs-observability.md.
+#
+# Схема сверена по dagster==1.13.23 / dagster-postgres==0.29.23.
+# StringSource/IntSource принимают {env: VAR} — секретов в файле нет.
+
+storage:
+  postgres:
+    postgres_db:
+      username:
+        env: DAGSTER_PG_USER
+      password:
+        env: DAGSTER_PG_PASSWORD
+      hostname:
+        env: DAGSTER_PG_HOST
+      db_name:
+        env: DAGSTER_PG_DB
+      port:
+        env: DAGSTER_PG_PORT
+
+# Run-процессы запускаются подпроцессами рядом с code server'ом — отдельный
+# контейнер на запуск не поднимается. Для демо этого достаточно; шаг к
+# DockerRunLauncher/K8sRunLauncher описан в docs/deploy/.
+run_launcher:
+  module: dagster._core.launcher
+  class: DefaultRunLauncher
+
+# max_concurrent_runs: 1 — не «для скромности», а требование хранилища:
+# DuckDB — один файл с одним писателем. Два параллельных run'а на общей
+# volume дадут `IO Error: Could not set lock on file`. Очередь делает
+# конкуренцию невозможной by design, а не «по договорённости».
+run_coordinator:
+  # Модуль именно `dagster._core...`: публичного алиаса `dagster.core`
+  # в 1.13 больше нет (старые примеры из интернета здесь падают).
+  module: dagster._core.run_coordinator
+  class: QueuedRunCoordinator
+  config:
+    max_concurrent_runs: 1
+
+# Демон свежести: без него FreshnessPolicy не оценивается и поле
+# freshnessStatusInfo в GraphQL всегда UNKNOWN -> экспортер отдаёт -1,
+# алерт «freshness violated» никогда не сработает.
+freshness:
+  enabled: true
+
+# В демо нет сети наружу; молчаливый исходящий запрос на записи — лишний риск.
+telemetry:
+  enabled: false
+
+python_logs:
+  # Логи наших модулей попадают в журнал запуска и в UI.
+  managed_python_loggers: [olist_ml, dlt]
+  python_log_level: INFO
+  # ВАЖНО: JSON-формат для stdout webserver'а и daemon'а задаётся НЕ здесь.
+  # Переменной DAGSTER_LOG_FORMAT в dagster 1.13 не существует — есть только
+  # флаг CLI `--log-format colored|json|rich` у `dagster-webserver` и
+  # `dagster-daemon run` (он и стоит в docker-compose.yml).
+  # dagster_handler_config ниже нужен, только если понадобится JSON ещё и от
+  # логгеров пользовательского кода внутри run-процессов; он требует пакета
+  # python-json-logger в образе, поэтому по умолчанию выключен.
+  #
+  # dagster_handler_config:
+  #   handlers:
+  #     json_console:
+  #       class: logging.StreamHandler
+  #       level: INFO
+  #       stream: ext://sys.stdout
+  #       formatter: json
+  #   formatters:
+  #     json:
+  #       "()": pythonjsonlogger.jsonlogger.JsonFormatter
+  #       format: "%(asctime)s %(levelname)s %(name)s %(message)s"
+
+# Ретеншен тиков сенсоров/расписаний: демо-стенд не должен пухнуть.
+retention:
+  sensor:
+    purge_after_days:
+      skipped: 3
+      failure: 7
+      success: 3
+  schedule:
+    purge_after_days:
+      skipped: 3
+      failure: 7
+      success: 3
