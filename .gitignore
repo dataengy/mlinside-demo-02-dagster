@@ -1,0 +1,29 @@
+# Python / uv
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Data / build artifacts
+*.duckdb
+*.duckdb.wal
+data/raw/
+target/
+dbt_packages/
+logs/
+.dagster_home/
+mlruns/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Agentic runtime state
+.ai/.locks/
+.ai/.brd-state*
+
+# IDE
+.idea/
+.DS_Store

@@ -72,6 +72,8 @@
 
 ---
 
+**D14. Отдельный репозиторий на демо (2026-09-20) — заменяет монорепо `mlinside-demo` из D9/§4.** `demo/02-dagster` вынесен в [dataengy/mlinside-demo-02-dagster](https://github.com/dataengy/mlinside-demo-02-dagster) (public, история сохранена `git subtree split --prefix=demo/02-dagster`) и подключён в `mlinside-hw-olist` сабмодулем `demo/02-dagster`. Причины: демо живут и версионируются независимо, нет цикла hw-olist → demo → hw-olist, `MLInside-course` может подключать ровно нужные демо. Шаг 1 (§4) исполняется в урезанном виде: только `02-dagster`; `01-dbt` и `MLInside-course` — отдельными шагами по тому же скиллу `/extract-dir-as-github-submodule`. Все команды этапов 1–2 выполняются из корня нового репо (не из `mlinside-demo/02-dagster/`).
+
 ## 2. Целевая структура файлов (что создаём и за что каждый файл отвечает)
 
 ```
@@ -141,6 +143,8 @@ mlinside-demo/                         # новый репозиторий datae
 ---
 
 ## 4. Шаг 1 — реструктуризация git (`demo` → `dataengy/mlinside-demo`)
+
+> **Заменено D14 (2026-09-20):** для `02-dagster` шаг выполнен как вынос в отдельный репо `dataengy/mlinside-demo-02-dagster` + сабмодуль `demo/02-dagster`. Процедура ниже — историческая, для `01-dbt`/`MLInside-course` использовать `/extract-dir-as-github-submodule`.
 
 **Предусловия на 2026-09-18 — не выполнены:**
 
