@@ -134,11 +134,12 @@ mlinside-demo/                         # новый репозиторий datae
 ЭТАП 2 (параллельные лейны, стартуют по гейтам):
    │              ├─ L-A dlt/Kaggle (после S2)          ├─ L-D ML-наглядность + автоматизация (после S4)
    │              └─ L-B transform/dq + freshness (после S3)   ├─ L-E Compose + Grafana + Telegram (после S4)
+   │                                                        ├─ L-H batch-инференс + SIM_TODAY (после S4)
    ├─ L-C maintenance (после S2; каждая clean_* — после своего этапа)   └─ L-F docs (после S3; финал после S6)
    └─ L-G agentic BRD-watch (не зависит от кода; уже запущен)
 ```
 
-Оценка (агент-часы): шаг 1 — 1 (+ ожидание пользователя); S1 1; S2 3; S3 2; S4 4; S5 1.5; S6 3; L-A 4; L-B 3; L-C 2; L-D 3; L-E 8; L-F 4; L-G 2. Итого ≈ 42 при 3–4 параллельных лейнах — 2–3 календарных дня.
+Оценка (агент-часы): шаг 1 — 1 (+ ожидание пользователя); S1 1; S2 3; S3 2; S4 4; S5 1.5; S6 3; L-A 4; L-B 3; L-C 2; L-D 3; L-E 8; L-F 4; L-G 2; L-H 4. Итого ≈ 46 при 3–4 параллельных лейнах — 2–3 календарных дня.
 
 ---
 
@@ -586,6 +587,7 @@ def pr_auc_floor(model_evaluation: dict) -> dg.AssetCheckResult:
 | **L-D ML-наглядность + автоматизация** | `MLflow` | `defs/automation/sensors.py::incoming_file_sensor` (курсор по `data/incoming/`), `AutomationCondition.eager()` на ML-ассетах (опц.) | `defs/ml/assets.py` (только если нужны доп. метаданные) | unit сенсора (курсор, `run_key`, `SkipReason`) через `build_sensor_context` |
 | **L-E Docker + Grafana + Telegram (демо 4)** | `MLflow` (compose), `CI` (docker-test) | `Dockerfile`, `.dockerignore`, `docker-compose.yml`, `deploy/dagster.prod.yaml`, `observability/**`, `alerts/telegram.py`, `defs/automation/sensors.py::alert_on_run_failure` — стартует с черновиков `.claude/drafts/observability/` (compose прошёл `docker compose config` с обоими профилями; 10 YAML + dashboard JSON валидны; экспортер компилируется) и `.claude/drafts/ci/{Dockerfile,.dockerignore}` | `Makefile` (`docker-*`, профили всегда парой), `.env.example` (`POSTGRES_*`, `GRAFANA_*`, `TG_*`, `MLFLOW_SERVER_ALLOWED_HOSTS`, `EXPORTER_PORT=9101`) | unit: `format_run_failure`, `send_telegram` на моке httpx; ручная проверка: `docker pull` закреплённых образов (`grafana/grafana:12.3.1`, `prom/prometheus:v3.7.3`, `grafana/loki:3.5.9`, `grafana/alloy:v1.12.1`, `ghcr.io/mlflow/mlflow:v3.16.1`), `make docker-up-observability` → граф, `full_pipeline_job`, dashboard, сломанный чек → алерт в Telegram |
 | **L-F docs** | `dbt build` (черновик runbook 1–2), `MLflow` (3), `тесты` (финал), L-E (4) | `docs/runbook.md`, `docs/deploy/**`, `docs/observability.md`, `data/README.md`, `README.md` | `docs/decisions.md` (аддитивно) | `make check` включает проверку ссылок (`scripts/check_md_refs.py`, опц.) |
+| **L-H batch-инференс + `SIM_TODAY` (демо 3, слайд 37)** | `MLflow` | `defs/ml/inference.py` (`predictions`, `prediction_monitoring`, checks), `defs/ml/simtime.py` | `settings.py` (`SIM_TODAY`, `SIM_START`, `ML_MODEL_ALIAS`, пороги positive rate / PSI), `jobs.py` (`inference_job`), `defs/ingest*/` и `defs/ml/assets.py` (фильтр `purchase_date <= SIM_TODAY`, минимальный diff), `.env.example` | unit: `psi()`, фильтр по `SIM_TODAY`; integration: партиция `predictions` ×2 = одно состояние (без дублей), `model_version` в строках и метаданных, загрузка по алиасу из tmp MLflow; e2e: обучение на окне → бэкфилл 3 партиций → checks видны |
 | **L-0 git-split** | ревью плана + предусловия §4 | `scripts/step1-restructure.sh` | — | dry-run на временном клоне выполнен |
 | **L-G agentic BRD-watch** | нет | `~/.ai/...` через скиллы пользователя или `apply.sh` | — | pipe-тест хука `echo '{}' \| bash hook` → exit 0 |
 
@@ -614,6 +616,13 @@ def source_freshness(dbt: DbtCliResource):
 ```
 
   `FreshnessPolicy.time_window(warn_window=timedelta(minutes=settings.FRESHNESS_WARN_MIN), fail_window=timedelta(minutes=settings.FRESHNESS_FAIL_MIN))` на `raw/*` и `mart_order_features` — через `post_processing` компонента, если 0.29.23 поддерживает `freshness_policy` в атрибутах (проверить первым шагом лейна), иначе `Definitions.map_asset_specs` одной строкой в `definitions.py`.
+
+**L-H (batch-инференс + `SIM_TODAY`).** Обоснование и контекст — [`docs/overview.md` §6](../docs/overview.md) (контур B и §6.5); пункты 1 и 5 из §6.7. Остальные кандидаты §6.7 (поздние метки, challenger/champion, time-split, ClickHouse) — **не в скоупе**, кандидаты на после лекции.
+
+- **`SIM_TODAY` — «виртуальное сегодня»** для исторического Olist (2016-09 … 2018-10): `settings.SIM_TODAY: date | None` (None = без ограничения, поведение этапа 1 не меняется) и `SIM_START`. Ingest и обучение видят только заказы с `purchase_date <= SIM_TODAY`; фильтр — в одном месте (`simtime.py::visible(df_or_sql)`), не размазан по ассетам. Сдвиг — через `.env`/Launchpad; расписание «+1 день» — опционально.
+- **`predictions`** — `DailyPartitionsDefinition(start_date=settings.SIM_START, end_date=SIM_TODAY+1)` по дню покупки. Партиция = заказы дня из `mart_order_features` (признаки без таргета). Модель — `mlflow.pyfunc.load_model(f"models:/{settings.ML_MODEL_NAME}@{settings.ML_MODEL_ALIAS}")` в момент запуска; `deps=[model_registered]` только для связности графа. Колонки: `order_id, day, score, pred, model_version, scored_at`. Запись идемпотентна: `delete where day = ?` + `insert` в одной транзакции DuckDB. Метаданные: `model_version`, `n_rows`, `positive_rate`. Автоматизация — `AutomationCondition.eager()` (только последняя партиция); **обновление модели не пересчитывает историю** — бэкфилл из UI явно, запись в `decisions.md`.
+- **`prediction_monitoring`** — asset checks на `predictions`: `positive_rate_within_bounds` (WARN), `score_psi_vs_train` (PSI распределения скоров партиции против holdout обучения, порог из settings, WARN). Эти checks подхватывает правило алертинга из L-E.
+- **Сценарий демо** (в runbook через L-F): `SIM_TODAY=2017-12-31` → `full_pipeline_job` (обучение на 2017) → `SIM_TODAY=2018-03-31` → бэкфилл `predictions` 2018-01…03 → в февр.–марте растёт positive rate / PSI → checks жёлтые → алерт. Проверить на реальных данных, что сдвиг действительно даёт срабатывание; если нет — подобрать порог и записать в `decisions.md`, данные не подкручивать.
 
 ---
 
