@@ -11,6 +11,7 @@
 ## Статус
 
 Репозиторий на стадии плана: код появится по шагам из [`.claude/PLAN.md`](.claude/PLAN.md).
+Описание проекта и схема обучения/инференса — [`docs/overview.md`](docs/overview.md).
 Постановка задачи — [`.claude/PROMPT.md`](.claude/PROMPT.md); результаты лейнов-разведки — `.claude/drafts/`.
 
 ## Происхождение
