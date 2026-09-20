@@ -1,16 +1,19 @@
 # Решения (ADR) — первая реализация (MVP)
 
-> Формат: контекст → решение → последствия, 5–10 строк на запись. Полная аргументация — в
-> [`.claude/PLAN.md`](../.claude/PLAN.md) (ссылки вида «PLAN D6» = раздел 1, решение D6).
-> Целевое состояние проекта и контуры обучения/инференса — [`overview.md`](overview.md).
-> Пошаговый план — [`.claude/TODO.md`](../.claude/TODO.md). Статус: **принято 2026-09-20**, ждёт реализации.
+> Формат: контекст → решение → последствия, 5–10 строк на запись. Ссылки вида «PLAN D6» указывают на
+> **архивный** план [`.claude/.archive/PLAN.md`](../.claude/.archive/PLAN.md) — это источник ранее измеренных
+> фактов и разведки, **не требование**. Целевое состояние и appendix «как в проде» — [`overview.md`](overview.md).
+> Пошаговый план — [`.claude/TODO.md`](../.claude/TODO.md). Сценарий показа — [`DEMO.md`](../DEMO.md).
+> Статус: **ревизия v3 принята 2026-09-20** (аудитория MLE/MLOps, рассказчик — DE; ≤30 мин экрана).
 
 ## Что такое MVP
 
-Сквозной пайплайн **Kaggle → DuckDB `raw` → dbt (staging → intermediate → `mart_order_features`) →
-обучение → оценка с gate → реестр MLflow**, воспроизводимый из чистого клона командой
-`make install && make dev`, с зелёным `make test-all`, GitHub Actions и `docker compose --profile core up`.
-Всё, что не нужно для этой цепочки, отложено (см. таблицу в конце и «После MVP» в TODO).
+Сюжет: **готовые raw-таблицы (snapshot Olist в DuckDB) → dbt staging/intermediate → feature mart →
+training dataset → обучение как чёрный ящик → evaluation и blocking gate → регистрация кандидата в MLflow →
+явный promotion в `champion` → независимый batch inference**. Dagster связывает всё в один наблюдаемый
+asset graph. Воспроизводится из чистого клона: `just install && just demo-prepare && just dev`; зелёный
+`just test-all`; GitHub Actions. Ingestion, внутренности ML, Docker и observability — предпосылки или appendix,
+они не вытесняют главный сюжет (dbt + ML lifecycle в Dagster).
 
 ---
 
@@ -28,33 +31,39 @@
 **Контекст.** ТЗ требует строго дефолтную структуру `create-dagster project` и компоненты `defs.yaml` как
 основной способ интеграций; python-декораторы — только где компонент не покрывает (PLAN D1).
 **Решение.** MVP использует только `dg.load_from_defs_folder(...)` из scaffold-`definitions.py`;
-интеграции — `defs/ingest/defs.yaml` (`DltLoadCollectionComponent`), `defs/dbt/defs.yaml`
-(`DbtProjectComponent`); ML, jobs, maintenance — обычные python-модули внутри `defs/`, которые
+интеграции — два `DbtProjectComponent`: `defs/ingest/defs.yaml` (seeds → `raw/*`) и `defs/dbt/defs.yaml`
+(модели + checks); ML, jobs, maintenance — обычные python-модули внутри `defs/`, которые
 автозагрузка подхватывает без правок `definitions.py`.
 **Последствия.** Переключатель `INTEGRATIONS_STYLE=yaml|python` и пакет `integrations_python/`
-(PLAN D1) — после MVP; `definitions.py` остаётся нетронутым, как требует ТЗ. Если компонент dlt
-не даст нужного поведения (см. ADR-03, риск «протухшего source»), fallback — `@dlt_assets` в
-`defs/ingest/assets.py`, и это будет первым отклонением.
+(PLAN D1) — после лекции; `definitions.py` остаётся нетронутым. Живой scaffold в кадре — во временной папке
+или показ уже выполненных команд (§5.1 ревизии), рабочий репозиторий поверх себя не пересоздаётся.
 
-## ADR-03. Ingest = dlt из Kaggle (анонимно) с сэмплированием по `order_id`; `data/raw` как кеш
+## ADR-03. Ingestion — предпосылка, не демо: `dbt seed` shipped-snapshot + `demo-prepare`; dlt — stretch
 
-**Контекст.** Два кандидата: v1 `dbt seed` из закоммиченных CSV и v2 dlt из Kaggle (PLAN D2, D11).
-Пользователь выбрал v2 для MVP (2026-09-20): очистка raw должна **реально перезагружать данные из Kaggle**.
-Лейн-разведка подтвердила: `kagglehub` качает `olistbr/brazilian-ecommerce` без учётки (16 с холодный,
-0.6 с из кеша), `product_category_name_translation.csv` содержит BOM.
+**Контекст.** Ревизия v3 (2026-09-20): аудитория — MLE/MLOps, рассказчик — DE; ingestion занимает ≤30 с
+экрана. Данные считаются уже доставленными DE-командой или доступными в warehouse/lakehouse; для автономности
+демо используется локальный DuckDB со snapshot Olist. Ранее в MVP стоял dlt из Kaggle (разведка в
+`.claude/drafts/ingest/`, PLAN D11): анонимная загрузка работает, но требует сети в демо и в CI и второго
+компонента ingest → ветвление `definitions.py`.
 **Решение.**
-- `@dlt.source kaggle_olist(sample_frac, seed, geo_max_rows, source_dir)`: если в `source_dir`
-  (`DATA_DIR/raw`) уже лежат 9 CSV — читает их; иначе `kagglehub.dataset_download` → копирует CSV в
-  `source_dir`. Все CSV читаются `dtype=str`, `encoding="utf-8-sig"`; касты — в dbt staging.
-- Сэмпл **до** загрузки: `sample_connected(tables, sample_frac, seed, geo_max_rows)` — одна выборка заказов,
-  остальные таблицы подтягиваются по ключам (`orders → order_items/payments/reviews → customers/products/sellers`,
-  `geolocation` — по zip-префиксам, ограничен `GEO_MAX_ROWS`).
-- 8 ресурсов `write_disposition="replace"` → DuckDB схема `raw`, ключи ассетов `raw/<table>`, группа `raw`.
-- `SAMPLE_FRAC` только из `settings` (компонент строит source при импорте); run-time конфиг сэмпла — после MVP.
-- Тесты: тот же source с `source_dir=tests/fixtures` — **без сети**; `kagglehub` в CI не вызывается.
-**Последствия.** Демо 1 показывает «настоящий» ingest; `make clean-raw` удаляет схему `raw`, `data/raw/`
-и кеш `kagglehub` → следующий запуск качает заново. dbt-seed-вариант (v1) — после MVP, если понадобится
-для слайда. Служебные `_dlt_*` таблицы в `sources.yml` не заносятся.
+- Ingest MVP = `dbt seed` из shipped-snapshot `dbt/seeds/raw/<table>.csv` (8 таблиц, ~5 000 связанных по
+  `order_id` заказов, ≈8 МБ; в git — через git-lfs, см. TODO M1). Первый запуск автономный и детерминированный:
+  без Kaggle, без сети. Фикстуры тестов (≤500 заказов) — обычные файлы в `tests/fixtures/`.
+- Одна команда подготовки — `just demo-prepare`: seeds → `raw.*`, `dbt deps`, локальные зависимости и
+  (предложение §7.1 ревизии) регистрация baseline-версии модели **без алиаса**. Она **не** обучает кандидата в
+  кадре, **не** делает promotion, **не** меняет `champion`.
+- `raw/<table>` остаются реальными ingest-ассетами (группа `raw`, отдельный компонент `DbtProjectComponent`
+  с `select: "path:seeds/raw"`), но **не входят** в основные demo-джобы (feature mart / DQ / train / promote /
+  score). Фиктивных materializations нет.
+- **dlt — опциональный stretch** после зелёного основного сюжета, и только если одновременно: ≤1 компонент/модуль
+  и ~30 мин агент-времени; ноль правок в dbt, `sources.yml` и ML-коде; без сети в демо и CI; без ветвлений в
+  `definitions.py` сложнее одной переменной режима. **Сработавшие критерии «против»:** сеть в демо/CI
+  (kagglehub) и второй компонент ingest = выбор модуля в `definitions.py`. Итог: dlt в MVP не входит; в DEMO —
+  одна фраза «по dlt и Airbyte будет отдельный вебинар», черновики остаются в appendix.
+**Последствия.** `just clean raw` дропает схему `raw` и пересеивает snapshot; смена объёма snapshot — пересборка
+seeds скриптом (`scripts/make_seeds_sample.py`, вход — полный датасет вне репо). Контракт raw (ADR-14) делает
+замену загрузчика прозрачной для dbt/ML. Альтернатива «данные от другой команды, `raw/*` как внешние
+assets/sources» — в appendix DEMO.
 
 ## ADR-04. dbt — копия канона, в графе только `+mart_order_features`
 
@@ -64,55 +73,79 @@
 **Решение.** `scripts/sync_dbt_from_canonical.sh` (rsync + наложение разрешённых отличий, идемпотентно) →
 `dbt/`. Разрешённые отличия: `profiles.yml` (только `duck`), `sources.yml` (см. ADR-05),
 `macros/generate_schema_name.sql` (схемы без префикса `main_`), `macros/cross_db/date_parts.sql`
-(+`month_of`), новая модель `marts/mart_order_features.sql` + её yml. Компонент
-`defs/dbt/defs.yaml`: `select: "+mart_order_features"` — в граф попадают 8 stg + 3 int + 1 mart
-(+ справочные seeds), остальные 5 marts остаются в копии, но не в графе. `cli_args: [build]`
-→ `dbt_build_job` = модели как ассеты + dbt-тесты как asset checks.
+(+`month_of`), новая модель `marts/mart_order_features.sql` + её yml (descriptions, owners/tags → в UI).
+Компонент `defs/dbt/defs.yaml`: `select: "+mart_order_features"`, `exclude: "path:seeds/raw"` — в граф попадают
+8 stg + 3 int + 1 mart (+ справочные seeds), остальные 5 marts остаются в копии, но не в графе; каждая модель —
+отдельный ассет, `ref()`/`source()` = рёбра, dbt не превращается в один непрозрачный task.
+**dbt-тесты = asset checks, материализация ≠ проверка (§5.3 ревизии):** две отдельные операции —
+`feature_mart_job` (только модели до `mart_order_features`) и `dq_job` (только checks; dagster-dbt сам
+выставляет `DBT_INDIRECT_SELECTION=empty`). Зелёная модель + красный check — разные состояния в UI.
+Провал контракта витрины должен **блокировать ML-ветку**; как именно (dbt-checks в 0.29.23 не `blocking`
+по умолчанию — вариант: явный `@asset_check(blocking=True)` на `mart_order_features`, дублирующий ключевой
+dbt-тест, либо порядок джоб) — определяется экспериментом на M2 и дописывается сюда. `dbt_build_job`
+(одна кнопка) остаётся для CI/диагностики, в кадре не главный.
 **Последствия.** Smoke-тест `test_dbt_copy_in_sync` проверяет, что отличий от канона ровно столько;
-`mart_order_features` + `month_of()` — кандидаты на PR в канон. Раздельные `transform_job`/`dq_job`
-и freshness (PLAN D3, D4) — после MVP.
+`mart_order_features` + `month_of()` — кандидаты на PR в канон. Негативный e2e-сценарий «сломанный контракт →
+check failed → ML не выполнена» — обязательный тест и блок DEMO. Source freshness (`dbt source freshness`)
+— в коде и appendix, отдельного экранного времени не получает (ADR-17 про asset freshness).
 
 ## ADR-05. Сшивка графа: ключ dbt-source = ключ ingest-ассета
 
-**Контекст.** Граф должен быть одним связным компонентом от Kaggle до `model_registered` (ТЗ, п. 1).
+**Контекст.** Граф должен быть одним связным компонентом от `raw/*` до `predictions`.
 **Решение.** В `sources.yml` копии у каждой таблицы `meta: {dagster: {asset_key: [raw, <table>]}}`,
-`database: olist`, `schema: raw`, без `external_location`; dlt-ресурсы называются как таблицы
-source (`orders`, `order_items`, …) и транслируются в `raw/{{ resource.name }}`.
-**Последствия.** Переход на любой другой ingest (seed, локальные CSV) не меняет `sources.yml`.
+`database: olist`, `schema: raw`, без `external_location`; seed-файлы называются как таблицы
+source (`orders`, `order_items`, …) и транслируются в `raw/{{ node.name }}`.
+**Последствия.** Переход на любой другой ingest (dlt, внешние assets) не меняет `sources.yml` (ADR-14).
 Проверяется smoke-тестом `test_graph_connected` (BFS от `raw/orders` достигает все ключи).
 
-## ADR-06. ML-задача, витрина без утечек, хеш-сплит, gate от минимума по сидам на сэмпле
+## ADR-06. ML — чёрный ящик: одна детерминированная модель, 8–10 признаков, один blocking gate
 
-**Контекст.** PLAN D6 и [`REPORT.md`](../.claude/drafts/ml/REPORT.md) лейна ML: «заказ доставлен с
-опозданием», 6.8 % положительных; признаки после доставки дают утечку (AUC → 1.0); HGB на 20 % — ROC AUC 0.78
-(мин. по сидам 0.726), честный time-split — 0.71.
+**Контекст.** Ревизия v3 §6: рассказчик не преподаёт ML; показываем откуда выборка, какие признаки доступны в
+момент предсказания, что проверено, что зарегистрировано, какой версией сделаны predictions. Разведка
+(`.claude/drafts/ml/REPORT.md`, архив): задача «заказ будет доставлен позднее обещанного срока», ~6.8 %
+положительных; признаки после доставки дают утечку.
 **Решение.**
-- Витрина `mart_order_features`: одна строка на доставленный заказ, 22 признака, известных на момент покупки;
-  запрещены `delivery_*`, `review_*`, `order_status`, все `mart_*`-агрегаты.
-- Модель по умолчанию `HistGradientBoostingClassifier` (параметры из PLAN D6), `ML_MODEL=logreg` — второй
-  вариант, удобен, чтобы честно уронить gate на демо.
-- Сплит — в Python по `md5(order_id|split|seed)`, holdout `ML_TEST_FRAC`; колонки `split` в витрине нет.
-- **MVP-сэмпл минимальный**: `SAMPLE_FRAC=0.05` (~5 тыс. заказов, обучение < 1 с). Порог
-  `ML_MIN_ROC_AUC` **калибруется на этом сэмпле** в задаче M4: прогон по 5 сидам, порог = минимум − 0.02;
-  стартовое значение в `.env.example` — 0.60. Неблокирующий `pr_auc_floor` — WARN.
-- Наглядность — метаданные в Dagster UI (`MetadataValue.md` таблица метрик, ROC/importance как PNG data-URI,
-  `MetadataValue.url` на MLflow run); ноутбук не делаем.
-**Последствия.** ⚠️ Хеш-сплит завышает метрику относительно time-split — оговорка в runbook и на слайде;
-`TrainConfig.split = hash | time` — после MVP (overview §6.2). `purchase_month` даёт половину качества
-(память об инцидентах 2017-11, 2018-03) — это честно проговаривается.
+- Формулировка: «На основании информации, доступной при оформлении заказа, оценить риск, что заказ будет
+  доставлен позднее обещанного срока». Feature contract — ADR-14.
+- **Одна модель**: `LogisticRegression` по умолчанию внутри одного sklearn `Pipeline`
+  (`ColumnTransformer`: numeric → impute+scale, categorical → one-hot); preprocessing — часть pipeline,
+  fit только на train. Если на shipped-snapshot LogReg не даёт стабильного результата между сидами —
+  `HistGradientBoosting`; решение по измерению фиксируется здесь (задача M3). **8–10 признаков**, список
+  утверждается на M3 (кандидаты: `items_cnt`, `distinct_sellers_cnt`, `order_value`, `freight_share`,
+  `max_installments`, `customer_state`/`customer_region`, `customer_seller_distance_km`,
+  `estimated_delivery_span_days`, `purchase_month`, `main_category`).
+- **Один blocking gate** — `quality_gate` по ROC AUC на holdout (`@asset_check(blocking=True)` на
+  `model_evaluation`). Прочие метрики (PR AUC, accuracy, positive rate) логируются в MLflow, чеками не
+  становятся. Порог **не переносится из архива**: измеряется на фактическом snapshot/признаках/сплите
+  (5 сидов, порог = минимум − 0.02) и записывается в `.env.example` на M3. Гарантированный fail-сценарий —
+  временное повышение порога через run config (`GateConfig.min_roc_auc`) или `.env`, а не «другая, худшая модель».
+- Не показываем: устройство алгоритма, гиперпараметры, сравнение моделей, feature importance, графики.
+  Метаданные ассетов — числа + ссылка на MLflow run.
+- Сплит — детерминированный, в Python по `md5(order_id|split|seed)`; random split — учебное упрощение,
+  temporal split — appendix (overview §6.2). `training_dataset` **сохраняет snapshot train/holdout**
+  (`data/ml/train_<fingerprint>.parquet`, `holdout_…`); `model_evaluation` читает holdout-снапшот, а не
+  перечитывает витрину (§6.5 ревизии).
+**Последствия.** Единственная ML-остановка в кадре — утечка: `delivery_delay_days` даёт почти идеальную метрику,
+но недоступен в момент scoring → его нет в контракте. Конкретный AUC в docs не обещаем до воспроизведения
+на текущем коде. `purchase_month` как признак — оговорка «память об инцидентах» остаётся, если признак войдёт в
+список.
 
-## ADR-07. Свой `MlflowResource`; регистрация идемпотентна по `dataset_fingerprint`
+## ADR-07. Свой `MlflowResource`; регистрация ≠ promotion; идемпотентность по `dataset_fingerprint`
 
 **Контекст.** `dagster-mlflow` — op-ориентированный legacy (`mlflow_tracking` + хук), не ложится на ассеты
-(PLAN D5). Повторный запуск не должен плодить версии в реестре (ТЗ, п. 5).
+(PLAN D5). Ревизия v3 §7.1: register и promote — разные шаги; после failed gate предыдущий `champion` не меняется;
+«последняя версия = production» недопустимо. Повторный запуск не должен плодить версии.
 **Решение.** `MlflowResource(dg.ConfigurableResource)` — тонкая обёртка: `setup()` (tracking/registry URI,
-эксперимент), `run_url()`. Backend `sqlite:///data/mlflow.db`, артефакты `data/mlruns`, UI — `make mlflow`
-на порту **5001** (5000 на macOS занят AirPlay). Модель логируется `serialization_format=cloudpickle`
-(обход падения skops при `dlt` в процессе). `model_registered`: тег `dataset_fingerprint =
-md5(sorted order_id + params)`; совпал с существующей версией → новая не создаётся, `reused_existing=True`;
-алиас `champion` переставляется на актуальную версию.
-**Последствия.** MLflow-run на каждый запуск создаётся (это нормально), версия — только при изменении данных
-или параметров. В compose tracking URI переключается на сервер через `MLFLOW_TRACKING_URI_OVERRIDE`.
+эксперимент), `run_url()`. Backend `sqlite:///data/mlflow.db`, артефакты `data/mlruns`, UI — `just mlflow`
+на порту **5001** (5000 на macOS занят AirPlay). Цепочка: `model` (кандидат, MLflow run) → `model_evaluation`
+→ `quality_gate` (blocking) → `model_registered` — создаёт **версию без алиаса** (тег `dataset_fingerprint =
+md5(sorted order_id + params)`; совпал с существующей версией → новая не создаётся, `reused_existing=True`)
+→ **отдельная джоба `promote_job`** (`@op`, единственное место кроме maintenance) переводит алиас `champion`
+на указанную/последнюю прошедшую gate версию — явное действие в кадре или из CLI. `demo-prepare` регистрирует
+baseline-версию **без алиаса**, чтобы реестр к блоку scoring не был пуст (предложение §7.1; реализация — M1/M4).
+**Последствия.** Failed gate → версии нет, `champion` прежний, scoring продолжает использовать прежнюю
+опубликованную версию. Откат = перевод алиаса на прошлую версию. `models:/<name>@champion` — контракт для
+inference (ADR-13).
 
 ## ADR-08. DuckDB — единственное хранилище; `in_process_executor`
 
@@ -137,68 +170,133 @@ md5(sorted order_id + params)`; совпал с существующей вер�
 
 ## ADR-10. Три уровня очистки: `raw` / `derived` / `all`
 
-**Контекст.** Требование пользователя: полная очистка данных из Makefile с двумя опциями — «всё кроме
-raw/source» и «только raw/source, чтобы перезагрузить из Kaggle». ТЗ п. 6 требует джобы очистки в
+**Контекст.** Требование пользователя: полная очистка данных из раннера с двумя опциями — «всё кроме
+raw/source» и «только raw/source, чтобы пересеять snapshot». ТЗ п. 6 требует джобы очистки в
 `defs/maintenance/` (единственное законное место `@op`/`@job`).
 **Решение.**
-| Джоба | Make | Что удаляет |
+| Джоба | Рецепт | Что удаляет |
 |---|---|---|
-| `clean_raw_job` | `make clean-raw` | схема `raw` в DuckDB, `data/raw/*.csv`, кеш `KAGGLEHUB_CACHE`, `data/dlt/` (state dlt) |
-| `clean_derived_job` | `make clean-derived` | схемы `staging`/`intermediate`/`marts`/`seeds` в DuckDB, `dbt/target/`, эксперимент и registered model в MLflow, `data/mlruns/` |
-| `clean_all_job` | `make clean-all` | `clean_raw_job` + `clean_derived_job` |
-| — | `make clean` | только кеши сборки (`__pycache__`, `.pytest_cache`, `dbt/target`, `dbt/dbt_packages`) — данные не трогает |
-Каждая джоба идемпотентна: на пустом состоянии — успех. Make-цели зовут `uv run dg launch --job <name>`
-(если флаг отличается — `dagster job execute -m olist_ml.definitions -j <name>`).
-**Последствия.** Демо «с нуля» = `make clean-all && make full`; `make clean-raw` = единственный способ
-получить новый сэмпл после смены `SAMPLE_FRAC`/`RANDOM_STATE`. Отдельные `clean_dbt`/`clean_ml` — не нужны.
+| `clean_raw_job` | `just clean raw` | схема `raw` в DuckDB (seeds пересеиваются `demo-prepare`) |
+| `clean_derived_job` | `just clean derived` | схемы `staging`/`intermediate`/`marts`/`seeds`/`ml` в DuckDB, `data/ml/*.parquet`, `dbt/target/`, эксперимент и registered model в MLflow, `data/mlruns/` |
+| `clean_all_job` | `just clean all` | `clean_raw_job` + `clean_derived_job` |
+| — | `just clean-build` | только кеши сборки (`__pycache__`, `.pytest_cache`, `dbt/target`, `dbt/dbt_packages`) — данные не трогает |
+Каждая джоба идемпотентна: на пустом состоянии — успех. Рецепты зовут `uv run dg launch --job <name>`
+(флаг `--job` есть в dagster-dg-cli 1.13.23, сверено по `cli/launch.py`).
+**Последствия.** Демо «с нуля» = `just clean all && just demo-prepare`; `just clean raw` = пересев snapshot.
+Отдельные `clean_dbt`/`clean_ml` — не нужны.
 
-## ADR-11. CI = вызовы Make-целей
+## ADR-11. CI = вызовы рецептов раннера
 
-**Контекст.** ТЗ: только `Makefile` + `.github/workflows/ci.yml`, без логики в YAML, без Kaggle и секретов.
-**Решение.** Job `ci` (`ubuntu-latest`, Python 3.12, `astral-sh/setup-uv` с кешем): `make install`,
-`make check`, `make test`; job `e2e` (`needs: ci`, не на PR): `make test-e2e`. `make check` =
-`dg check defs` + `ruff check` + `dbt parse`. Черновик — `.claude/drafts/ci/`.
-**Последствия.** Всё, что зелёное в CI, повторяется локально `make ci`. Docker-образ в CI не собирается.
+**Контекст.** Ревизия §9: ~1 мин в кадре — зелёный пайплайн и что он проверяет; без сети за данными (shipped
+fixtures), без логики в YAML, без секретов; e2e отделён от быстрых проверок.
+**Решение.** Job `ci` (`ubuntu-latest`, Python 3.12, `astral-sh/setup-uv` с кешем, `extractions/setup-just`):
+`just install`, `just check`, `just test`; job `e2e` (`needs: ci`, не на PR): `just test-e2e`. `just check` =
+`dg check defs` + `ruff check` + `dbt parse`. Черновик workflow — `.claude/drafts/ci/.github/workflows/ci.yml`
+(цели переименовать).
+**Последствия.** Всё, что зелёное в CI, повторяется локально `just ci`; ни одна показываемая команда не
+существует только в слайдах. Docker-образ в CI не собирается; деплой и Dagster+ — docs, не кадр.
 
-## ADR-12. Docker Compose профиль `core` на Postgres; observability — после MVP
+## ADR-12. Docker Compose и Grafana-стек — вне MVP (docs и расширенное демо)
 
-**Контекст.** ТЗ демо 4 требует работающий compose; правило выбора SQLite/Postgres — по стабильности
-двух процессов (PLAN D8): SQLite на общей volume Docker Desktop даёт `database is locked`.
-**Решение.** `docker-compose.yml` профиль `core`: `postgres:16-alpine`, `dagster-webserver`, `dagster-daemon`
-(один образ `olist_ml:local`, multi-stage uv), `mlflow` (`ghcr.io/mlflow/mlflow`, `MLFLOW_SERVER_ALLOWED_HOSTS`);
-общая volume для `data/`. `deploy/dagster.prod.yaml`: Postgres storage, `QueuedRunCoordinator`
-(`max_concurrent_runs: 1`), `--log-format json`. Основа — `.claude/drafts/observability/docker-compose.yml`
-без observability-сервисов.
-**Последствия.** dev и prod отличаются `dagster.yaml` + `.env`. Профиль `observability`
-(Grafana/Prometheus/Loki/Alloy, экспортер, Telegram) — после MVP; compose пишется так, чтобы профиль
-добавлялся, а не переписывался.
+**Контекст.** Ревизия §10: observability ~1.5 мин, полный стек в кадре не разворачивается, если это дольше одной
+команды или 30 с ожидания; §6 приоритетов: Docker не вытесняет главный сюжет. Решение пользователя (2026-09-20):
+в коде MVP — только Telegram-алерт (ADR-18); Compose `core` и Grafana — не в MVP.
+**Решение.** Черновики `.claude/drafts/observability/` (compose с профилями `core`/`observability`, Postgres,
+экспортер, Grafana provisioning) остаются как основа **расширенного демо** и `docs/deploy/`, `docs/observability.md`
+(пишутся после MVP). Ранее принятое правило «Dagster storage в compose — Postgres» (PLAN D8: SQLite на общей volume
+даёт `database is locked`) сохраняется для расширенного демо.
+**Последствия.** В MVP `dagster.yaml` только dev (SQLite в `DAGSTER_HOME`, `freshness.enabled: true`). Dev vs prod
+объясняется через ML-процесс (overview §4.1), не через инфраструктуру.
 
-## ADR-13. Обучение и инференс — разные контуры; MVP покрывает только обучение
+## ADR-13. Обучение и инференс — разные контуры; в MVP — минимальный непартиционированный batch inference
 
-**Контекст.** В проде обучение (периодическое, batch) и применение модели (постоянное, batch или online)
-живут раздельно и связаны через **реестр моделей**, а не через один запуск; несоответствие между ними —
-*training-serving skew*. Подробно — [`overview.md` §6](overview.md#6-периодическое-обучение-и-постоянный-инференс-как-это-обычно-устроено)
-(контуры A/B/C, типичные ошибки §6.6).
-**Решение.** MVP реализует **контур A**: `training_dataset → model → model_evaluation → quality_gate →
-model_registered` с алиасом `@champion`. Контракт с контуром B зафиксирован уже сейчас: инференс загружает
-модель **только по алиасу** (`models:/<name>@champion`), никогда «последнюю версию»; `model_version` пишется
-в результат. Сам контур B — партиционированный `predictions`, `prediction_monitoring`, `SIM_TODAY` —
-лейн **L-H** ([PLAN §6](../.claude/PLAN.md)), после MVP.
-**Последствия.** На лекции вопрос «а где инференс?» закрывается слайдом по overview §6 и пунктирной частью
-графа; в коде MVP инференса нет намеренно. `@challenger` + джоба `promote`, time-split, поздние метки — кандидаты
-после лекции (overview §6.7).
+**Контекст.** В проде обучение (периодическое) и применение модели (постоянное, batch или online) живут
+раздельно и связаны через реестр моделей; несоответствие между ними — *training-serving skew*. Ревизия §7.3
+требует показать независимый batch scoring в MVP. Подробно про прод — [`overview.md` §6](overview.md)
+(appendix: контуры A/B/C, типичные ошибки §6.6).
+**Решение.** Инференс в MVP — два ассета: `scoring_input` (строки из feature mart с **ещё неизвестным** target,
+не «уже доставленные заказы»; см. ADR-14) → `predictions`. `predictions`: один раз в начале run разрешает
+`champion` в конкретную версию, загружает **полный Pipeline** (preprocessing внутри), считает `score` и
+`predicted_class` для фиксированного batch, пишет `order_id, score, predicted_class, model_version, batch_id,
+scored_at` в `ml.predictions`; повторный запуск того же `batch_id` не создаёт дублей (`delete where batch_id` +
+`insert`); обучение не запускает; при отсутствии `champion` завершается понятной ошибкой «нет опубликованной
+модели — выполните promote». Metadata: rows, mean score, predicted-positive rate, model version, batch id —
+**не** доказательство drift или качества. Без партиций, без `SIM_TODAY`.
+Связь train ↔ inference: «прямой runtime-зависимости нет: опубликованная модель передаётся через MLflow alias
+`champion`; feature schema и preprocessing остаются общим контрактом» (не «только через alias»).
+**Последствия.** Реплика в кадре: «scoring работает, и видно, какой версией получены предсказания; реальное
+качество станет известно позже, когда придут labels». Партиции, backfill, `prediction_monitoring`, drift,
+поздние метки, auto-retraining, challenger/champion, online serving — appendix (overview §6, §6.7), не в коде MVP.
 
 ---
 
-## Отложено (не в MVP)
+## ADR-14. Контракты данных: raw и feature contract
 
-| Тема | PLAN | Куда |
+**Контекст.** Ревизия §4.2 и §6.3: контракт raw — не только `AssetKey`; переключение источника не должно
+требовать правок dbt/ML; нужно различать feature mart / training dataset / scoring input / predictions.
+**Решение.** Два документа: [`contracts/raw.md`](contracts/raw.md) — для каждой из 8 таблиц: ключ
+`raw/<table>`, `database.schema.table`, колонки и типы (raw грузится `VARCHAR`, касты в staging), ключи и
+гранулярность, NULL/`''`-семантика, смысл полей, соответствие `sources.yml`; [`contracts/features.md`](contracts/features.md)
+— `mart_order_features` (одна строка на заказ; только признаки, доступные в момент оформления; target
+`is_late_delivery` NULL, пока заказ не доставлен), `training_dataset` (исторические строки с известным target,
+snapshot train/holdout), `scoring_input` (строки с неизвестным target), `predictions` (результат опубликованной
+модели, с `model_version`). Проверка контракта raw — smoke-тест по `sources.yml` + `information_schema` DuckDB
+(seed-режим); при появлении второго загрузчика — тот же тест на обоих режимах (appendix).
+**Последствия.** Утечка (`delivery_delay_days`, `order_delivered_*`, `review_*`, `order_status`) исключена
+контрактом, а не кодом модели. Разделение mart/training/scoring — три отдельных ассета в графе.
+
+## ADR-15. Task runner — Justfile (единственный интерфейс)
+
+**Контекст.** Ревизия §12; факты на 2026-09-20: `just 1.58.0` установлен, системный `make` — GNU 3.81 (без
+`.ONESHELL`: многострочные рецепты только через `\`/`;`), нет параметров задач, `-include .env` требует `export`.
+**Решение.** `Justfile`: shebang-рецепты (`#!/usr/bin/env bash`/python) без `\`, параметры (`just clean
+raw|derived|all`), `set dotenv-load`, `just --list` как help; CI (`extractions/setup-just`) и Docker (`uv tool
+install rust-just`) вызывают те же рецепты; README — одна строка установки (`brew install just` / `uv tool install
+rust-just`). Makefile не ведётся (один интерфейс). Черновик `.claude/drafts/ci/Makefile` мигрируется на M0.
+**Последствия.** Зрителю нужен `just`; компенсация — строка в README и `just --list` в первом кадре.
+
+## ADR-16. Evidently — не в MVP
+
+**Контекст.** Ревизия §7.5 допускала один HTML-отчёт; пакет нигде не установлен, тянет тяжёлые зависимости
+(~+150 МБ, сеть). Решение пользователя 2026-09-20 — в расширенное демо.
+**Решение.** В MVP Evidently нет; в DEMO (блок observability) — одна фраза + appendix «drift/quality-отчёты».
+**Последствия.** Освобождённые ~0.7 мин экрана — резерв тайминга.
+
+## ADR-17. Выборочный пересчёт и freshness — центральный Dagster-сценарий
+
+**Контекст.** Ревизия §8, §5.5. Факт по установленному dagster-dbt 0.29.23: `code_version` dbt-ассета по умолчанию
+= `sha1(raw_sql)` (`asset_utils.py::default_code_version_fn`) — своей реализации версионирования не требуется.
+**Решение.** Сценарий: изменить SQL `mart_order_features` → reload definitions (manifest пересобирается через
+`prepare_if_dev`) → в UI изменённый dbt-ассет получает статус «code version changed» → выбрать mart + downstream
+ML-ветку → Materialize selection → по run events: raw и неизменившийся staging не запускались, выполнились витрина
+и выбранные потребители. **Не обещаем**: транзитивную пометку downstream сразу после reload; что статический job
+сам выберет только Unsynced; что «пересчитается ровно N узлов». Поведение статусов downstream до/после
+материализации mart и текст UI **проверяются на 1.13.23 на M5** и дописываются сюда и в DEMO.
+Freshness: различаем **asset freshness** (когда ассет последний раз материализован — `FreshnessPolicy.time_window`
+на `mart_order_features`, демон `freshness.enabled: true`) и **data/source freshness** (свежесть бизнес-данных —
+`dbt source freshness`, в коде и appendix). Недавняя материализация ≠ свежие данные — проговаривается.
+**Последствия.** Сравнение с Airflow 3 + Cosmos — только короткими репликами в DEMO (ассеты и lineage вместо
+тасков; тесты как checks; один граф через границу dbt → Python; выборочный пересчёт; freshness как статус),
+формулировки без преувеличения ограничений Cosmos.
+
+## ADR-18. Observability MVP = Dagster UI + `run_failure_sensor → Telegram`
+
+**Контекст.** Ревизия §10: один экран, один канал алерта, ~1.5 мин. Решение пользователя 2026-09-20.
+**Решение.** Статус run'ов и checks — Dagster UI (Runs, Asset checks, Freshness). Один канал алерта —
+`@dg.run_failure_sensor` → `httpx.post` в Telegram Bot API (`TG_BOT_TOKEN`/`TG_CHAT_ID` из `.env`, dry-run при
+`ALERTS_ENABLED=false`), unit-тест на мок HTTP. Grafana/Prometheus/Loki — расширенное демо (ADR-12).
+**Последствия.** Никаких новых сервисов в MVP; в кадре — сообщение в Telegram после сломанного check/run.
+
+---
+
+## Отложено (не в MVP) — appendix
+
+| Тема | Источник | Куда |
 |---|---|---|
-| dbt seed v1, `INGEST_MODE=seed\|dlt` | D2 | TODO «После MVP» |
-| `transform_job` / `dq_job`, source freshness, `FreshnessPolicy` | D3, D4 | TODO «После MVP» |
-| `INTEGRATIONS_STYLE=python`, `integrations_python/`, `test_style_parity` | D1 | TODO «После MVP» |
-| Grafana-стек, экспортер, Telegram-алерты, `run_failure_sensor` | D10 | TODO «После MVP» |
-| `predictions`, `prediction_monitoring`, `SIM_TODAY` | L-H | TODO «После MVP» |
-| `docs/deploy/` (Hetzner VM, Dagster+) | §11 | TODO «После MVP» |
-| Agentic BRD-watch | D13 | TODO «После MVP» |
-| Параллельные лейны и object-lock | D12 | не нужно для MVP (один агент, последовательно) |
+| dlt из Kaggle (критерии ADR-03), Airbyte | архив D11, `.claude/drafts/ingest/` | appendix DEMO, отдельный вебинар |
+| Evidently-отчёт | ADR-16 | расширенное демо |
+| Docker Compose core, Grafana-стек, экспортер | ADR-12, `.claude/drafts/observability/` | `docs/deploy/`, `docs/observability.md`, расширенное демо |
+| Партиции `predictions`, backfill, `SIM_TODAY`, `prediction_monitoring`, drift, поздние метки, auto-retraining, challenger/champion, online serving, feature store, Kafka | overview §6, §6.7 | appendix |
+| `dbt source freshness` как asset checks; `INTEGRATIONS_STYLE=python`, `integrations_python/` | архив D1, D4 | код без экранного времени / после лекции |
+| `docs/deploy/` (Hetzner VM, Dagster+) | архив §11 | docs, не кадр |
+| Agentic BRD-watch | архив D13 | после лекции |
