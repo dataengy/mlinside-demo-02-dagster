@@ -88,6 +88,13 @@ assets/sources» — в appendix DEMO.
 check failed → ML не выполнена» — обязательный тест и блок DEMO. Source freshness (`dbt source freshness`)
 — в коде и appendix, отдельного экранного времени не получает (ADR-17 про asset freshness).
 
+**Факт M4 (2026-09-21): `--indirect-selection cautious`.** С дефолтным `eager` полный `dbt build --select
++mart_order_features` тянет тесты канона, у которых часть родителей вне выборки (`assert_order_revenue_reconciles`
+→ `mart_daily_state_metrics`, `dbt_utils.equal_rowcount` → `int_order_items_enriched`) — они падают Catalog Error.
+Dagster такие тесты как checks и не регистрировал (не все родители — ассеты), поэтому в `dq_job` их не было, а в
+`demo_prepare_job` (build моделей + тестов одним op) они всплыли. `cli_args: [build, --indirect-selection,
+cautious]` выравнивает набор тестов dbt с набором checks Dagster.
+
 ### ADR-04b. `prepare_if_dev: false` — manifest собирает `just dbt-parse`, dev/check/CI офлайн
 
 **Контекст (M1, 2026-09-21, факт по исходнику dagster-dbt 0.29.23 `dbt_project.py:88–126`).** `prepare_if_dev`
@@ -232,9 +239,11 @@ inference (ADR-13).
 ### ADR-07a. Baseline-версия к блоку scoring — варианты
 
 > **Решение пользователя (2026-09-20): A.** `demo-prepare` обучает ту же модель вне кадра на том же snapshot и
-> регистрирует v1 **без алиаса** (тег `baseline=true`, другой `RANDOM_STATE`/параметр, чтобы fingerprint не
-> совпал с кандидатом из кадра). Оговорка в DEMO S0: «baseline, не кандидат; promotion остаётся живым действием».
-> Варианты ниже сохранены как обоснование.
+> регистрирует v1 **без алиаса** (тег `role=baseline`, другой `random_state`, чтобы fingerprint не совпал с
+> кандидатом из кадра). Оговорка в DEMO S0: «baseline, не кандидат; promotion остаётся живым действием».
+> Реализовано на M4: `demo_prepare_job` = `RAW | MART.upstream() | ML` с job-config
+> `training_dataset`/`model` → `{random_state: 7, role: baseline}`; `promote_job` (`@op`, `PromoteConfig.version`
+> или последняя) и `demote_job` — в `defs/promotion.py`. Варианты ниже сохранены как обоснование.
 
 **Зачем.** В блоке 4 DEMO нужно показать (а) promotion как живое действие и (б) что failed gate не трогает
 `champion`, а scoring продолжает работать прежней версией. Для (б) в реестре к началу блока должна быть хотя бы
@@ -353,6 +362,12 @@ scored_at` в `ml.predictions`; повторный запуск того же `b
 **не** доказательство drift или качества. Без партиций, без `SIM_TODAY`.
 Связь train ↔ inference: «прямой runtime-зависимости нет: опубликованная модель передаётся через MLflow alias
 `champion`; feature schema и preprocessing остаются общим контрактом» (не «только через alias»).
+**Реализовано на M4** (`defs/ml/inference.py`, группа `inference`, `score_job`): `scoring_input` пишет
+`ml.scoring_input` (batch_id + признаки, target NULL — на snapshot 138 строк); `predictions` разрешает
+`get_model_version_by_alias` один раз, грузит `mlflow.sklearn.load_model("models:/<name>/<version>")` (нужен
+`predict_proba`, поэтому не pyfunc), пишет `ml.predictions` через `delete where batch_id` + `insert`; без
+алиаса — `dg.Failure(«…выполните promote_job (just promote)»)`. Инференс-ассеты не входят в `train_job`
+(группа `inference` ≠ `ml`) — прямой runtime-зависимости от обучения нет.
 **Последствия.** Реплика в кадре: «scoring работает, и видно, какой версией получены предсказания; реальное
 качество станет известно позже, когда придут labels». Партиции, backfill, `prediction_monitoring`, drift,
 поздние метки, auto-retraining, challenger/champion, online serving — appendix (overview §6, §6.7), не в коде MVP.

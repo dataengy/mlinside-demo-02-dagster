@@ -267,10 +267,11 @@ ops:
 - MLflow → Models: baseline v1 (из подготовки) и кандидат v2 (из S11), alias пустой.
 
 ```bash
-just promote               # fallback: uv run dg launch --job promote_job  (или alias в MLflow UI)
+just promote               # последняя версия; `just promote 1` — явная; fallback: alias в MLflow UI
 ```
 
-- Alias `champion` → v2. «Откат = перевести alias назад; переобучать ничего не нужно».
+- Alias `champion` → v2 (metadata op: `previous_version`, `version`). «Откат = `just promote 1`; переобучать
+  ничего не нужно».
 - «После failed gate (S12) версии не появилось, champion не изменился — <u>"последняя версия = production"</u> здесь
   невозможно».
 
@@ -286,7 +287,9 @@ just promote               # fallback: uv run dg launch --job promote_job  (ил
 just score                 # fallback: uv run dg launch --job score_job
 ```
 
-- `scoring_input → predictions`; метаданные: rows, mean score, predicted-positive rate, **`model_version`**, `batch_id`.
+- `scoring_input` (таблица `ml.scoring_input`: заказы с ещё неизвестным target — на snapshot 138) →
+  `predictions` (`ml.predictions`); метаданные: rows, mean score, predicted-positive rate, **`model_version`**,
+  `batch_id`, `rows_total_in_table`.
 - «Training и scoring не имеют прямой runtime-зависимости: модель передаётся через alias `champion`; feature
   schema и preprocessing остаются общим контрактом».
 - «Сейчас мы видим, что scoring работает и какой версией получены предсказания. Реальное качество станет

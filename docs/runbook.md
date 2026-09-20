@@ -44,7 +44,9 @@ Snapshot (`dbt/seeds/raw/*.csv`, ~8 МБ) хранится через git-lfs: �
 | `just mlflow` | MLflow UI на `MLFLOW_PORT=5001` (5000 на macOS занят AirPlay) |
 | `just check` | `dg check defs` + `ruff check` + `dbt parse` — без сети, без UI |
 | `just test` / `just test-e2e` / `just test-all` | smoke+unit+integration / e2e / всё |
-| `just feature-mart` / `just dq` / `just train` / `just promote [version]` / `just score` | пять раздельных операций сюжета (`dg launch --job …`) |
+| `just feature-mart` / `just dq` / `just train` / `just promote [version]` / `just score` | пять раздельных операций сюжета (`dg launch --job …`; promote с версией — через `--config-json`) |
+| `just demote` | снять alias champion (S15: `predictions` завершается ошибкой «выполните promote») |
+| `just measure-gate` | порог gate по 5 сидам на текущей витрине |
 | `just demo-prepare` | подготовка raw и зависимостей; **не** обучает, **не** делает promotion |
 | `just demo-break` / `just demo-fix` / `just demo-sql-change` | заготовленные патчи для блоков 2 и 5 DEMO |
 | `just dbt-sync` | копия канонического dbt-проекта + overlay (`CANON=<path>` — источник; ADR-04) |

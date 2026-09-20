@@ -53,7 +53,7 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("MLFLOW_TRACKING_URI", f"sqlite:///{tmp_path / 'mlflow.db'}")
     monkeypatch.setenv("MLFLOW_ARTIFACTS_DIR", str(tmp_path / "mlruns"))
     monkeypatch.setenv("ML_DATA_DIR", str(tmp_path / "ml"))
-    (tmp_path / "home").mkdir()
+    (tmp_path / "home").mkdir(exist_ok=True)
     yield tmp_path
     _run_py(str(PROJECT_ROOT / "scripts" / "demo_patch.py"), "fix")
     _parse()
@@ -100,18 +100,21 @@ def test_train_job_registers_version_without_alias_and_is_idempotent(env: Path) 
     assert any("unique" in n and "order_id" in n for n in checks), (
         "dbt-checks витрины идут в том же run"
     )
+    # demo_prepare уже зарегистрировал baseline v1 (ADR-07a A) → кандидат = v2, оба без алиаса
     meta = _registered_meta(r1)
-    assert meta["model_version"] == 1 and meta["reused_existing"] is False
+    assert meta["model_version"] == 2 and meta["reused_existing"] is False
 
-    client = mlflow.MlflowClient(tracking_uri=f"sqlite:///{env / 'mlflow.db'}")
+    uri = f"sqlite:///{env / 'mlflow.db'}"
+    client = mlflow.MlflowClient(tracking_uri=uri, registry_uri=uri)
     versions = client.search_model_versions(f"name='{settings.MLFLOW_MODEL_NAME}'")
-    assert len(versions) == 1 and not versions[0].aliases
+    assert sorted(int(v.version) for v in versions) == [1, 2]
+    assert all(not v.aliases for v in versions)
 
     r2 = _job("train_job").execute_in_process()
     assert r2.success
     meta2 = _registered_meta(r2)
-    assert meta2["model_version"] == 1 and meta2["reused_existing"] is True
-    assert len(client.search_model_versions(f"name='{settings.MLFLOW_MODEL_NAME}'")) == 1
+    assert meta2["model_version"] == 2 and meta2["reused_existing"] is True
+    assert len(client.search_model_versions(f"name='{settings.MLFLOW_MODEL_NAME}'")) == 2
 
 
 @pytest.mark.skipif(not SEEDS_DIR.is_dir(), reason="snapshot ещё не сгенерирован")

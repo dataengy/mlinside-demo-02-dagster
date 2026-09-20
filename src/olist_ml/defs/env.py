@@ -20,4 +20,9 @@ Path(os.environ["DUCKDB_PATH"]).parent.mkdir(parents=True, exist_ok=True)
 
 os.environ.setdefault("DBT_TARGET", settings.DBT_TARGET)
 os.environ.setdefault("DBT_VERSION_CHECK", "false")
+# cautious: тест попадает в dbt build, только если все его родители в выборке; с eager (default) полный build
+# `+mart_order_features` тянет тесты канона на модели вне графа и падает Catalog Error (ADR-04, факт M4).
+# dagster-dbt переопределяет переменную на `empty` для run без checks — это и нужно.
+os.environ.setdefault("DBT_INDIRECT_SELECTION", "cautious")
 os.environ.setdefault("DBT_SEND_ANONYMOUS_USAGE_STATS", "false")
+os.environ.setdefault("MLFLOW_DISABLE_TELEMETRY", "true")

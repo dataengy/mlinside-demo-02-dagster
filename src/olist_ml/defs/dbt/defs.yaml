@@ -10,6 +10,8 @@ attributes:
     project_dir: "{{ project_root }}/dbt"
   select: "+mart_order_features"
   exclude: "path:seeds/raw"
+  # Indirect selection = cautious задаётся через env DBT_INDIRECT_SELECTION (defs/env.py, Justfile):
+  # флаг в cli_args перебил бы `empty`, который dagster-dbt выставляет для run без checks.
   cli_args: [build]
   op:
     name: dbt_feature_branch

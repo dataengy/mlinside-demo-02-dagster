@@ -4,7 +4,15 @@
 
 ## MVP
 
-- [ ] M3 ML контур A — ветка `feat/m3-ml-train-gate-register` — 2026-09-21 —
+- [ ] M4 Promotion + batch inference — ветка `feat/m4-promote-inference` — 2026-09-21 —
+  `defs/promotion.py` (`promote_job` → alias champion на версию/последнюю, `demote_job`), `demo_prepare_job`
+  = raw → витрина + checks → baseline-версия без алиаса (`role=baseline`, сид 7; ADR-07a A),
+  `defs/ml/inference.py`: `scoring_input` (строки с target NULL → `ml.scoring_input`) → `predictions`
+  (alias → версия один раз, полный Pipeline, `ml.predictions` с `model_version`/`batch_id`, delete+insert по
+  batch, `dg.Failure` «выполните promote» без champion), `score_job`; `--indirect-selection cautious` у dbt-компонента
+  (eager тянул тесты канона на модели вне графа). Тест: baseline → fail без champion → promote → v1 → без
+  дублей → новый кандидат не меняет champion → promote v2 → demote.
+- [x] M3 ML контур A — `2477a2c` (PR #14) — 2026-09-21 —
   `ml/features.py` (контракт 10 признаков, хеш-сплит, LogReg Pipeline, fingerprint), ассеты
   `training_dataset` (snapshot train/holdout parquet) → `model` (MLflow run) → `model_evaluation` (holdout) →
   `quality_gate` (blocking, `GateConfig.min_roc_auc`) → `model_registered` (версия без алиаса, идемпотентно по

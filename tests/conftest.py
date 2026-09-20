@@ -20,6 +20,7 @@ MANIFEST = DBT_DIR / "target" / "manifest.json"
 os.environ.setdefault("DBT_VERSION_CHECK", "false")
 os.environ.setdefault("DBT_SEND_ANONYMOUS_USAGE_STATS", "false")
 os.environ.setdefault("MLFLOW_DISABLE_AGENT_HINT", "1")
+os.environ.setdefault("DBT_INDIRECT_SELECTION", "cautious")
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -43,3 +44,22 @@ def dbt_manifest() -> Path | None:
             timeout=300,
         )
     return MANIFEST
+
+
+@pytest.fixture(autouse=True)
+def _isolate_stores(
+    request: pytest.FixtureRequest, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Интеграционные тесты никогда не пишут в реальные data/olist.duckdb, data/mlflow.db, data/ml.
+
+    demo_prepare_job обучает baseline (ADR-07a A) → без изоляции тест засорял бы реальный реестр MLflow
+    и глобальный registry URI процесса. Тесты могут переопределить пути своими monkeypatch'ами.
+    """
+    if "integration" not in str(request.node.fspath):
+        return
+    monkeypatch.setenv("DUCKDB_PATH", str(tmp_path / "olist.duckdb"))
+    monkeypatch.setenv("DAGSTER_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("MLFLOW_TRACKING_URI", f"sqlite:///{tmp_path / 'mlflow.db'}")
+    monkeypatch.setenv("MLFLOW_ARTIFACTS_DIR", str(tmp_path / "mlruns"))
+    monkeypatch.setenv("ML_DATA_DIR", str(tmp_path / "ml"))
+    (tmp_path / "home").mkdir(exist_ok=True)

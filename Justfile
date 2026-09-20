@@ -25,6 +25,8 @@ export DUCKDB_PATH := absolute_path(env("DUCKDB_PATH", "data/olist.duckdb"))
 export MLFLOW_DISABLE_AGENT_HINT := "1"
 export DBT_SEND_ANONYMOUS_USAGE_STATS := "false"
 export DBT_VERSION_CHECK := "false"
+export MLFLOW_DISABLE_TELEMETRY := "true"
+export DBT_INDIRECT_SELECTION := "cautious"
 
 # Показать рецепты
 default:
@@ -150,9 +152,19 @@ train:
 measure-gate:
     uv run python scripts/measure_gate.py
 
-# Перевести алиас champion (M4)
-promote:
-    uv run dg launch --job promote_job
+# Перевести алиас champion на версию (по умолчанию — последняя): `just promote` | `just promote 2`
+promote version="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -n "{{version}}" ]; then
+      uv run dg launch --job promote_job --config-json "{\"ops\":{\"promote_champion\":{\"config\":{\"version\":{{version}}}}}}"
+    else
+      uv run dg launch --job promote_job
+    fi
+
+# Снять алиас champion (S15: predictions завершается понятной ошибкой)
+demote:
+    uv run dg launch --job demote_job
 
 # Batch inference опубликованной версией (M4)
 score:

@@ -70,7 +70,7 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     db = tmp_path / "olist.duckdb"
     monkeypatch.setenv("DUCKDB_PATH", str(db))
     monkeypatch.setenv("DAGSTER_HOME", str(tmp_path / "home"))
-    (tmp_path / "home").mkdir()
+    (tmp_path / "home").mkdir(exist_ok=True)
     yield db
     _patch("fix")  # даже если тест упал посреди негативного сценария
 

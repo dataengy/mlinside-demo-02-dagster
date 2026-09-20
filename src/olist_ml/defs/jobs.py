@@ -12,11 +12,19 @@ MART = dg.AssetSelection.keys("mart_order_features")
 # Ветка витрины без raw-снапшота: справочные seeds + staging + intermediate + mart (и их checks).
 DBT = MART.upstream() - RAW
 
+ML = dg.AssetSelection.groups("ml")
+INFERENCE = dg.AssetSelection.groups("inference")
+
+# Подготовка «до» (ADR-03, ADR-07a A): raw-snapshot → витрина (+checks) → baseline-версия в реестре
+# БЕЗ алиаса (другой сид → другой fingerprint, тег role=baseline). Promotion остаётся живым действием в кадре.
+_baseline = {"random_state": 7, "role": "baseline"}
 demo_prepare_job = dg.define_asset_job(
     "demo_prepare_job",
-    selection=RAW,
+    selection=RAW | MART.upstream() | ML,
+    config={"ops": {"training_dataset": {"config": _baseline}, "model": {"config": _baseline}}},
     description=(
-        "Подготовка окружения: dbt seed snapshot Olist → raw.*. Не обучает, не делает promotion."
+        "Подготовка окружения вне кадра: seed snapshot → витрина + checks → baseline-версия модели "
+        "без алиаса (role=baseline). Не делает promotion, не трогает champion."
     ),
 )
 
@@ -42,7 +50,6 @@ dbt_build_job = dg.define_asset_job(
     description="«Одна кнопка» dbt build: модели + тесты в одном run — для CI и диагностики.",
 )
 
-ML = dg.AssetSelection.groups("ml")
 # ADR-04a (A): blocking dbt-checks витрины идут в одном run с ML — провал контракта пропускает ML-ветку.
 MART_CHECKS = MART - MART.without_checks()
 
@@ -56,8 +63,15 @@ train_job = dg.define_asset_job(
 )
 
 
+score_job = dg.define_asset_job(
+    "score_job",
+    selection=INFERENCE,
+    description="Batch inference опубликованной версией (@champion): scoring_input → predictions.",
+)
+
+
 @dg.definitions
 def jobs() -> dg.Definitions:
     return dg.Definitions(
-        jobs=[demo_prepare_job, feature_mart_job, dq_job, dbt_build_job, train_job]
+        jobs=[demo_prepare_job, feature_mart_job, dq_job, dbt_build_job, train_job, score_job]
     )

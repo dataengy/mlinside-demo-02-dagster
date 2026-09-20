@@ -35,7 +35,7 @@ def test_seed_job_is_idempotent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     db = tmp_path / "olist.duckdb"
     monkeypatch.setenv("DUCKDB_PATH", str(db))  # dbt читает profiles через env_var
     monkeypatch.setenv("DAGSTER_HOME", str(tmp_path / "home"))
-    (tmp_path / "home").mkdir()
+    (tmp_path / "home").mkdir(exist_ok=True)
     from olist_ml.definitions import defs
 
     job = defs().resolve_job_def("demo_prepare_job")
