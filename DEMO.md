@@ -54,7 +54,8 @@ just clean all && just demo-prepare && just mlflow && just dev
 - Во временной папке (рабочий репо поверх себя не пересоздаём):
 
 ```bash
-cd "$(mktemp -d)" && uvx create-dagster@1.13.23 project olist_demo && cd olist_demo && uv run dg dev   # ⚠ проверить форму команды
+cd "$(mktemp -d)" && uvx create-dagster@1.13.23 project olist_demo   # на вопрос «Run uv sync?» — y (проверено на M0)
+cd olist_demo && uv run dg dev
 ```
 
 - В UI — пустой граф. «Здесь ещё ничего нет — и это правильно: Dagster ничего не вычисляет сам».
@@ -78,7 +79,9 @@ just --list && just dev
 - Роль **`manifest.json`**: dbt-граф → Dagster-граф. Его собирает `just dbt-parse` (входит в `install`/`check`/
   `dev`), компоненты читают готовый файл (`prepare_if_dev: false`, ADR-04b) — так же, как prod-артефакт;
   «магии при загрузке» нет, и сеть после `install` не нужна.
-- Как это создавалось: `uv run dg scaffold defs dagster_dbt.DbtProjectComponent dbt` ⚠ проверить.
+- Как это создавалось (проверено на M5): `uv run dg scaffold defs dagster_dbt.DbtProjectComponent dbt
+  --project-path dbt` → `defs/dbt/defs.yaml` с `project: '{{ context.project_root }}/dbt'`; дальше руками —
+  `select`, `exclude`, `translation`, `op.name`, `prepare_if_dev: false`.
 - Реплика Cosmos: «в Airflow 3 + Cosmos dbt-модели тоже раскладываются в задачи по manifest; разница проявится
   дальше — граф продолжится в Python без склейки».
 
@@ -138,8 +141,8 @@ just dq                                  # check красный
 ```
 
 - Открыть витрину: материализация зелёная, check красный — <u>два разных состояния одного ассета</u>.
-- Пробуем обучение — ML-ветка не выполняется (blocking; механика — ADR-04a, ⚠ проверить на M2 текст статуса
-  «skipped/blocked»):
+- Пробуем обучение — ML-ветка не выполняется: `train_job` включает blocking dbt-checks витрины в тот же run,
+  провал `unique(order_id)` пропускает `training_dataset … model_registered` (ADR-04a A, проверено на M3):
 
 ```bash
 just train                               # ожидаем: ML-ассеты не материализованы

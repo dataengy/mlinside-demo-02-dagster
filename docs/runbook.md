@@ -62,9 +62,9 @@ Snapshot (`dbt/seeds/raw/*.csv`, ~8 МБ) хранится через git-lfs: �
 ## 4. Scaffold (как проект создавался; для блока 1 DEMO)
 
 ```bash
-uvx create-dagster@1.13.23 project olist_ml     # ⚠ проверить форму команды
+uvx create-dagster@1.13.23 project olist_ml     # проверено (M0): pyproject с [tool.dg], definitions.py = load_from_defs_folder
 cd olist_ml && uv python pin 3.12 && uv add dagster-dbt==0.29.23 dagster-duckdb==0.29.23 dbt-duckdb mlflow scikit-learn
-uv run dg scaffold defs dagster_dbt.DbtProjectComponent dbt   # ⚠ проверить: создаёт src/olist_ml/defs/dbt/defs.yaml
+uv run dg scaffold defs dagster_dbt.DbtProjectComponent dbt --project-path dbt   # проверено (M5): defs/dbt/defs.yaml
 uv run dg dev
 ```
 
