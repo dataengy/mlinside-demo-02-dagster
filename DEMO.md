@@ -165,8 +165,9 @@ just demo-fix && just feature-mart && just dq
 
 **Главный поинт:** _asset freshness_ — когда ассет материализован; _data freshness_ — насколько свежи данные внутри. <u>Недавняя материализация ≠ свежие данные.</u>
 
-- У `mart_order_features` — статус freshness (`FreshnessPolicy.time_window`, демон `freshness.enabled`) ⚠
-  проверить текст статуса в 1.13.23.
+- У `mart_order_features` — статус freshness `HEALTHY` (`FreshnessPolicy.time_window`, окна 10/30 мин из `.env`,
+  демон `freshness.enabled: true`; проверено на M5). Витрина собрана в S4 (~5-я минута) → к этому слайду
+  (~12-я) статус может сам стать `WARNING` — это и есть демонстрация.
 - «Если витрину не пересчитывали дольше окна — статус деградирует, даже если данные внутри нормальные. Это
   вопрос оркестрации».
 - «Свежесть бизнес-данных — `dbt source freshness` по `order_purchase_timestamp`; она в коде, но экранного
@@ -324,10 +325,10 @@ just demo-sql-change       # правка mart_order_features.sql (новый п
 ```
 
 - `just dbt-parse` (manifest) → Reload definitions в UI (ADR-04b).
-- Открыть `mart_order_features` — статус «code version changed» (в dagster-dbt 0.29.23 `code_version` по
-  умолчанию = `sha1(raw_sql)`; своей реализации не нужно) ⚠ проверить текст статуса.
-- «Downstream ML-ассеты <u>не помечены транзитивно</u> — и это правильно: их код не менялся, изменились бы данные
-  после пересчёта витрины».
+- Открыть `mart_order_features` — статус **Unsynced / STALE**, причина «has a new code version» (в dagster-dbt
+  0.29.23 `code_version` по умолчанию = `sha1(raw_sql)`; своей реализации не нужно — проверено на M5).
+- «Downstream ML-ассеты <u>не помечены транзитивно</u> (они `FRESH`) — и это правильно: их код не менялся,
+  изменились бы данные после пересчёта витрины».
 
 📚 [docs.dagster.io — code versions / stale assets](https://docs.dagster.io/guides/build/assets/asset-versioning-and-caching) · ADR-17
 
@@ -337,9 +338,15 @@ just demo-sql-change       # правка mart_order_features.sql (новый п
 
 **Главный поинт:** <u>выбранная витрина + её ML-потребители</u> — без raw и без неизменившегося staging.
 
-- В UI выбрать `mart_order_features` + `training_dataset … model_registered` (или до `predictions`) →
-  Materialize selection.
-- По run events: `raw/*` и staging не запускались; выполнились витрина и выбранные потребители.
+- В UI выбрать `mart_order_features` + `training_dataset … model_registered` → Materialize selection; из
+  терминала то же самое:
+
+```bash
+just demo-recompute        # dg launch --assets "mart_order_features,training_dataset,model,model_evaluation,model_registered"
+```
+
+- По run events (проверено на M5): степы `dbt_feature_branch → training_dataset → model → model_evaluation →
+  quality_gate → model_registered`; `raw/*` и staging не запускались; после run все ассеты `FRESH`.
 - Не обещаем: что после reload все downstream станут Unsynced; что статический job сам выберет только Unsynced;
   что пересчитается ровно N узлов.
 - Реплика Cosmos: «в task-модели пересчитывается DAG или сабсет по таскам; здесь — выбранные ассеты по факту

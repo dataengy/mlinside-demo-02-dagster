@@ -322,6 +322,10 @@ raw/source» и «только raw/source, чтобы пересеять snapsho
 (флаг `--job` есть в dagster-dg-cli 1.13.23, сверено по `cli/launch.py`).
 **Последствия.** Демо «с нуля» = `just clean all && just demo-prepare`; `just clean raw` = пересев snapshot.
 Отдельные `clean_dbt`/`clean_ml` — не нужны.
+**Реализовано на M5** (`defs/maintenance/jobs.py`): `clean_derived` дропает схемы `staging, intermediate, marts,
+seeds, test_failures, ml`, удаляет `data/ml/*.parquet`, `delete_registered_model` + удаление run'ов эксперимента +
+`mlruns/`, `dbt/target/{run,compiled,run_results.json}`; `clean_raw` — схему `raw`; всё идемпотентно (нет БД /
+схемы / модели — не ошибка). Тест: `clean_all → demo_prepare` даёт те же counts и версию 1.
 
 ## ADR-11. CI = вызовы рецептов раннера
 
@@ -419,6 +423,18 @@ ML-ветку → Materialize selection → по run events: raw и неизме
 Freshness: различаем **asset freshness** (когда ассет последний раз материализован — `FreshnessPolicy.time_window`
 на `mart_order_features`, демон `freshness.enabled: true`) и **data/source freshness** (свежесть бизнес-данных —
 `dbt source freshness`, в коде и appendix). Недавняя материализация ≠ свежие данные — проговаривается.
+**Проверено на 1.13.23 (M5, 2026-09-21).** После `just demo-sql-change` + Reload definitions GraphQL
+`staleStatus`: витрина `STALE`, `staleCauses = [(CODE, "has a new code version")]`; `training_dataset`, `model`,
+`predictions`, `stg_orders` — `FRESH` (пометка **не транзитивна**). `just demo-recompute` =
+`dg launch --assets "mart_order_features,training_dataset,model,model_evaluation,model_registered"` → run
+`__ASSET_JOB` со степами `dbt_feature_branch, training_dataset, model, model_evaluation,
+model_evaluation_quality_gate, model_registered`; `raw_snapshot_seed` и staging не выполнялись; после — всё
+`FRESH`. Freshness: `translation.freshness_policy` принимает **значение** template-функции
+(`{{ mart_freshness if node.name == 'mart_order_features' else none }}`, `template_vars_module: .template_vars`,
+`@dg.template_var` — подставляется объект, не вызов); `freshnessStatusInfo.freshnessStatus = HEALTHY` сразу после
+материализации; окна 10/30 мин из settings — к блоку S7 (≈12-я минута) статус витрины, собранной в S4, может
+стать `WARNING` сам по себе, это и есть демонстрация. `predictions` после пересчёта витрины остался `FRESH`
+(dbt-ассеты не эмитят data version) — в кадре не обещаем «downstream подсветится по данным».
 **Последствия.** Сравнение с Airflow 3 + Cosmos — только короткими репликами в DEMO (ассеты и lineage вместо
 тасков; тесты как checks; один граф через границу dbt → Python; выборочный пересчёт; freshness как статус),
 формулировки без преувеличения ограничений Cosmos.

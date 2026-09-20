@@ -144,6 +144,10 @@ demo-fix:
 demo-sql-change:
     uv run python scripts/demo_patch.py sql-change && just dbt-parse
 
+# Выборочный пересчёт (S17): витрина + её ML-потребители, raw и staging не запускаются
+demo-recompute:
+    uv run dg launch --assets "mart_order_features,training_dataset,model,model_evaluation,model_registered"
+
 # Обучить кандидата: checks витрины → training_dataset → model → evaluation → gate → версия без алиаса
 train:
     uv run dg launch --job train_job

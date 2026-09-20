@@ -43,3 +43,19 @@ def test_mart_has_blocking_checks(graph) -> None:
     names = {c.name for c in checks}
     assert any("unique" in n and "order_id" in n for n in names), names
     assert any("accepted_range" in n and "freight_share" in n for n in names), names
+
+
+def test_mart_has_freshness_policy_only(graph) -> None:
+    import datetime as dt
+
+    from olist_ml.settings import settings
+
+    mart = graph.get(dg.AssetKey(["mart_order_features"]))
+    policy = mart.freshness_policy
+    assert policy is not None, "FreshnessPolicy.time_window на витрине (ADR-17)"
+    fail = policy.fail_window
+    assert (
+        fail.days * 86400 + fail.seconds
+        == dt.timedelta(minutes=settings.FRESHNESS_FAIL_MIN).total_seconds()
+    )
+    assert graph.get(dg.AssetKey(["stg_orders"])).freshness_policy is None

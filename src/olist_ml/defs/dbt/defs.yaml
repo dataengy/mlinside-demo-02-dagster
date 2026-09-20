@@ -4,6 +4,8 @@
 # defs/ingest (исключён здесь через path:seeds/raw); source-узлы склеиваются с ним по
 # meta.dagster.asset_key (ADR-05).
 type: dagster_dbt.DbtProjectComponent
+# Template-функции (asset freshness витрины — ADR-17).
+template_vars_module: .template_vars
 
 attributes:
   project:
@@ -21,6 +23,8 @@ attributes:
     group_name: "{{ node.fqn[1] if node.fqn | length > 2 else 'seeds' }}"
     description: "{{ node.description or ('dbt-модель ' ~ node.name) }}"
     owners: ["team:data-engineering"]
+    # Asset freshness только у витрины признаков (когда материализована — не свежесть данных внутри).
+    freshness_policy: "{{ mart_freshness if node.name == 'mart_order_features' else none }}"
     tags:
       layer: "{{ node.fqn[1] if node.fqn | length > 2 else 'seeds' }}"
       dbt_resource_type: "{{ node.resource_type }}"

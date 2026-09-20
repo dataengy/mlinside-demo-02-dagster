@@ -4,7 +4,14 @@
 
 ## MVP
 
-- [ ] M4 Promotion + batch inference — ветка `feat/m4-promote-inference` — 2026-09-21 —
+- [ ] M5 Выборочный пересчёт, freshness, очистка — ветка `feat/m5-recompute-freshness-clean` — 2026-09-21 —
+  живьём подтверждено: после `just demo-sql-change` + reload только `mart_order_features` → `STALE`
+  (`CODE: has a new code version`), ML-ассеты `FRESH`; `just demo-recompute` (`dg launch --assets …`) выполнил
+  `dbt_feature_branch → training_dataset → model → model_evaluation → quality_gate → model_registered`, raw/staging
+  не запускались; `FreshnessPolicy.time_window` на витрине через `template_vars_module` (`mart_freshness`),
+  статус `HEALTHY`; `defs/maintenance/jobs.py`: `clean_raw|derived|all_job` (@op/@job), тест: пустое состояние ок,
+  уровни, `clean_all → demo_prepare` воспроизводит counts и версию 1.
+- [x] M4 Promotion + batch inference — `6371ea4` (PR #15) — 2026-09-21 —
   `defs/promotion.py` (`promote_job` → alias champion на версию/последнюю, `demote_job`), `demo_prepare_job`
   = raw → витрина + checks → baseline-версия без алиаса (`role=baseline`, сид 7; ADR-07a A),
   `defs/ml/inference.py`: `scoring_input` (строки с target NULL → `ml.scoring_input`) → `predictions`

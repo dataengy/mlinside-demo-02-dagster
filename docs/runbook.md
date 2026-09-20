@@ -52,7 +52,8 @@ Snapshot (`dbt/seeds/raw/*.csv`, ~8 МБ) хранится через git-lfs: �
 | `just dbt-sync` | копия канонического dbt-проекта + overlay (`CANON=<path>` — источник; ADR-04) |
 | `just seeds-sample` | snapshot raw (`SNAPSHOT_N_ORDERS`) → `dbt/seeds/raw`, фикстуры → `tests/fixtures/raw`; вход — полные CSV Kaggle |
 | `just dbt-parse` | manifest.json (ADR-04b); после правки SQL — + Reload в UI |
-| `just clean raw|derived|all` | очистка данных (ADR-10); `just clean-build` — только кеши сборки |
+| `just clean raw|derived|all` | очистка данных (ADR-10): raw — схема raw; derived — dbt-схемы, snapshot ML, MLflow (эксперимент + реестр); `just clean-build` — только кеши сборки |
+| `just demo-recompute` | выборочный пересчёт: витрина + её ML-потребители (S17) |
 | `just ci` | то же, что CI: install → check → test |
 
 Проверка здоровья без UI: `uv run dg list defs` (все ключи и джобы), `uv run dg check defs`, GraphQL
