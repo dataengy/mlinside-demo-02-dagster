@@ -1,0 +1,101 @@
+version: 2
+
+models:
+  - name: int_orders_enriched
+    description: >
+      Заказ со всеми связанными сущностями: клиент, регион, итоги по позициям,
+      платёж, отзыв, расстояние до продавца. Гранулярность — один заказ.
+      Опорная модель для витрин «по заказам».
+    columns:
+      - name: order_id
+        description: Первичный ключ. Число строк обязано совпадать со stg_orders.
+        tests: [not_null, unique]
+      - name: customer_unique_id
+        description: Идентификатор человека; по нему строится профиль клиента.
+        tests: [not_null]
+      - name: customer_state
+        tests: [not_null]
+      - name: customer_region
+        description: Макрорегион Бразилии из seed_state_region.
+        tests:
+          - accepted_values:
+              values: [Norte, Nordeste, Centro-Oeste, Sudeste, Sul]
+      - name: order_value
+        description: >
+          Стоимость заказа: товары плюс доставка. У 775 заказов без позиций — 0.
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              strictly: false
+      - name: items_cnt
+        description: Число позиций. 0 у заказов без позиций.
+        tests: [not_null]
+      - name: is_large_order
+        description: 1, если стоимость заказа не ниже var('large_order_threshold').
+        tests:
+          - accepted_values: {values: [0, 1], quote: false}
+      - name: has_review
+        description: 1, если у заказа есть отзыв (у 768 заказов его нет).
+        tests:
+          - accepted_values: {values: [0, 1], quote: false}
+      - name: review_score
+        description: Оценка 1–5 или NULL, если отзыва не было.
+      - name: customer_seller_distance_km
+        description: >
+          Расстояние от покупателя до первого продавца заказа, км (макрос
+          haversine_km). NULL, если zip-префикса нет в geolocation.
+    tests:
+      # Главная защита от разветвления: соединения с позициями, платежами
+      # и отзывами не должны были размножить строки.
+      - dbt_utils.equal_rowcount:
+          compare_model: ref('stg_orders')
+
+  - name: int_order_distance
+    description: >
+      Расстояние от покупателя до ближайшего продавца заказа, км.
+      Вынесено из int_orders_enriched отдельной моделью: вместе формула
+      гаверсинуса и шесть соединений не помещались в лимит парсера ClickHouse.
+      Гранулярность — один заказ (только заказы, у которых есть позиции).
+    columns:
+      - name: order_id
+        description: Первичный ключ.
+        tests: [not_null, unique]
+      - name: customer_seller_distance_km
+        description: >
+          Расстояние по большому кругу, км. NULL, если zip-префикса покупателя
+          или продавца нет в geolocation. Максимум ограничен размерами
+          Бразилии — около 4 500 км с севера на юг.
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 6000
+
+  - name: int_order_items_enriched
+    description: >
+      Позиция заказа с товаром, продавцом и исходом заказа. Гранулярность —
+      одна позиция. Опорная модель для витрин по категориям и продавцам.
+    columns:
+      - name: order_id
+        tests: [not_null]
+      - name: order_item_id
+        tests: [not_null]
+      - name: product_category_name_english
+        description: Категория на английском; 'unknown' для 623 товаров.
+        tests: [not_null]
+      - name: seller_id
+        tests: [not_null]
+      - name: item_total
+        description: price + freight_value.
+        tests: [not_null]
+      - name: price_segment
+        tests:
+          - accepted_values:
+              values: [LOW, MEDIUM, HIGH, VERY_HIGH, UNKNOWN]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [order_id, order_item_id]
+      # Столько же строк, сколько позиций в staging — join с заказами
+      # не должен был ни потерять, ни размножить.
+      - dbt_utils.equal_rowcount:
+          compare_model: ref('stg_order_items')
