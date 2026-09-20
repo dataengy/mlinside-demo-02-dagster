@@ -1,0 +1,60 @@
+# Отличие от канона (ADR-04): добавлен блок seeds.olist_dbt.raw (snapshot Olist → схема raw, ADR-03);
+# остальное — как в mlinside-hw-olist/dbt. Имена схем без префикса — macros/generate_schema_name.sql.
+name: olist_dbt
+version: "1.0.0"
+config-version: 2
+
+profile: olist_dbt
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests", "unit_tests"]
+seed-paths: ["seeds"]
+analysis-paths: ["analyses"]
+
+clean-targets: ["target", "dbt_packages", "logs"]
+
+vars:
+  raw_database: "{{ env_var('CH_RAW_DB', 'olist_raw') }}"
+  late_delivery_grace_days: 0
+  large_order_threshold: 200
+  customer_high_value_threshold: 500
+  customer_medium_value_threshold: 150
+  seller_late_rate_threshold: 20
+  start_date: ""
+  end_date: ""
+  chained_views_threshold: "{{ 4 if target.type == 'clickhouse' else 5 }}"
+
+models:
+  olist_dbt:
+    +persist_docs:
+      relation: true
+      columns: true
+    staging:
+      +materialized: table
+      +schema: staging
+    intermediate:
+      +materialized: table
+      +schema: intermediate
+    marts:
+      +materialized: table
+      +schema: marts
+
+  dbt_project_evaluator:
+    +enabled: "{{ target.type == 'duckdb' }}"
+
+seeds:
+  olist_dbt:
+    +schema: seeds
+    # Snapshot raw-таблиц Olist (ADR-03): схема raw, ключи ассетов raw/<table> — см. defs/ingest/defs.yaml.
+    # Типы колонок — вывод dbt seed (как read_csv_auto в каноне); касты в staging там, где они есть.
+    raw:
+      +schema: raw
+
+  dbt_project_evaluator:
+    +enabled: "{{ target.type == 'duckdb' }}"
+
+tests:
+  olist_dbt:
+    +store_failures: true
+    +schema: test_failures

@@ -1,0 +1,192 @@
+version: 2
+
+models:
+  - name: stg_orders
+    description: >
+      Заказы с приведёнными типами, частями даты покупки и флагами исхода
+      (доставлен / отменён / просрочен). Одна строка на заказ.
+    columns:
+      - name: order_id
+        description: Первичный ключ.
+        tests: [not_null, unique]
+      - name: customer_id
+        description: Ссылка на stg_customers. Уникален для каждого заказа.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_customers')
+              field: customer_id
+      - name: order_purchase_date
+        description: Дата оформления заказа (без времени).
+        tests: [not_null]
+      - name: order_hour
+        description: Час оформления, 0–23.
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 23
+      - name: order_dow
+        description: День недели по ISO, понедельник = 1 … воскресенье = 7.
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 1
+              max_value: 7
+      - name: is_delivered
+        description: 1, если у заказа есть фактическая дата доставки.
+        tests:
+          - accepted_values: {values: [0, 1], quote: false}
+      - name: is_canceled
+        description: 1 для статусов canceled и unavailable.
+        tests:
+          - accepted_values: {values: [0, 1], quote: false}
+      - name: is_late_delivery
+        description: >
+          1, если доставили позже обещанного. NULL для недоставленных заказов —
+          именно поэтому доля просрочек считается только по доставленным.
+        tests:
+          - accepted_values: {values: [0, 1], quote: false}
+      - name: delivery_days
+        description: Дней от оформления до вручения. NULL, если не доставлен.
+      - name: delivery_delay_days
+        description: >
+          Разница между фактом и обещанием в днях. Отрицательное значение —
+          приехало раньше срока.
+
+  - name: stg_order_items
+    description: Позиции заказов. Одна строка на позицию, 112 650 всего.
+    columns:
+      - name: order_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_orders')
+              field: order_id
+      - name: order_item_id
+        description: Номер позиции внутри заказа, начиная с 1.
+        tests: [not_null]
+      - name: product_id
+        tests: [not_null]
+      - name: seller_id
+        tests: [not_null]
+      - name: price
+        description: Цена позиции без доставки, в реалах.
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              strictly: false
+      - name: item_total
+        description: price + freight_value.
+        tests: [not_null]
+      - name: freight_share
+        description: Доля доставки в стоимости позиции, 0–1.
+      - name: price_segment
+        description: Корзина цены, макрос price_bucket.
+        tests:
+          - accepted_values:
+              values: [LOW, MEDIUM, HIGH, VERY_HIGH, UNKNOWN]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [order_id, order_item_id]
+
+  - name: stg_order_reviews
+    description: >
+      Отзывы, схлопнутые до одного на заказ (последний по времени ответа).
+      В сырых данных 814 дублей review_id и 547 заказов с двумя отзывами.
+    columns:
+      - name: order_id
+        description: >
+          После дедупликации ключ модели. Тест unique здесь — главная проверка
+          того, что схлопывание отработало.
+        tests: [not_null, unique]
+      - name: review_id
+        tests: [not_null]
+      - name: review_score
+        description: Оценка 1–5.
+        tests:
+          - not_null
+          - accepted_values: {values: [1, 2, 3, 4, 5], quote: false}
+      - name: is_bad_review
+        description: 1 при оценке ≤ 2.
+        tests:
+          - accepted_values: {values: [0, 1], quote: false}
+      - name: is_good_review
+        description: 1 при оценке ≥ 4.
+        tests:
+          - accepted_values: {values: [0, 1], quote: false}
+
+  - name: stg_order_payments
+    description: >
+      Платежи, схлопнутые до одного заказа. В сырых данных один заказ может
+      быть оплачен несколькими способами.
+    columns:
+      - name: order_id
+        tests: [not_null, unique]
+      - name: payment_total
+        description: Суммарно уплачено по заказу.
+        tests: [not_null]
+      - name: main_payment_type
+        description: Способ оплаты с наибольшей суммой.
+        tests:
+          - accepted_values:
+              values: [credit_card, boleto, voucher, debit_card, not_defined]
+
+  - name: stg_customers
+    description: Покупатели. customer_id — на заказ, customer_unique_id — на человека.
+    columns:
+      - name: customer_id
+        tests: [not_null, unique]
+      - name: customer_unique_id
+        description: Идентификатор человека; по нему строится профиль клиента.
+        tests: [not_null]
+      - name: customer_state
+        description: Код штата (UF).
+        tests:
+          - not_null
+          - relationships:
+              to: ref('seed_state_region')
+              field: state_code
+
+  - name: stg_sellers
+    description: Продавцы маркетплейса.
+    columns:
+      - name: seller_id
+        tests: [not_null, unique]
+      - name: seller_state
+        tests:
+          - not_null
+          - relationships:
+              to: ref('seed_state_region')
+              field: state_code
+
+  - name: stg_products
+    description: >
+      Товары с английским названием категории из seed. У 610 товаров
+      категории нет — они получают 'unknown', а не выбрасываются.
+    columns:
+      - name: product_id
+        tests: [not_null, unique]
+      - name: product_category_name
+        description: Категория на португальском или 'unknown'.
+        tests: [not_null]
+      - name: product_category_name_english
+        description: Категория на английском или 'unknown'. Используется в витринах.
+        tests: [not_null]
+      - name: product_volume_cm3
+        description: Объём упаковки; NULL, если габариты не заполнены.
+
+  - name: stg_geolocation
+    description: >
+      Один центроид на zip-префикс: 1 млн строк схлопнут до ~19 тыс.
+      Соединять с клиентами и продавцами можно только эту модель, не источник.
+    columns:
+      - name: zip_code_prefix
+        description: Первичный ключ после схлопывания.
+        tests: [not_null, unique]
+      - name: latitude
+        tests: [not_null]
+      - name: longitude
+        tests: [not_null]
+      - name: points_cnt
+        description: Сколько исходных точек попало в центроид.
+        tests: [not_null]

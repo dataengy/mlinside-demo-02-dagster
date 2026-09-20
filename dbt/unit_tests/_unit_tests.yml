@@ -1,0 +1,160 @@
+version: 2
+
+# Unit-тесты (dbt ≥ 1.8) проверяют ЛОГИКУ на выдуманных строках, а не данные
+# в хранилище. Тем они и ценны: сюда можно подать ровно те пограничные случаи,
+# которых в реальном датасете единицы или нет вовсе, — и убедиться, что
+# правило работает, ещё до загрузки данных.
+
+unit_tests:
+
+  - name: test_late_delivery_flag_handles_nulls
+    description: >
+      Главное правило проекта: просрочка определена ТОЛЬКО для доставленных
+      заказов. Недоставленный заказ обязан дать NULL, а не 0, иначе доля
+      просрочек окажется занижена. Здесь же проверяется посуточная семантика:
+      доставка в обещанный день, но позже полуночи, — это не опоздание.
+    model: stg_orders
+    given:
+      - input: source('olist_raw', 'orders')
+        rows:
+          # доставлен на день позже обещанного → просрочка
+          - {order_id: 'late', customer_id: 'c1', order_status: 'delivered',
+             order_purchase_timestamp: '2018-01-01 10:00:00',
+             order_approved_at: '2018-01-01 11:00:00',
+             order_delivered_carrier_date: '2018-01-02 10:00:00',
+             order_delivered_customer_date: '2018-01-11 10:00:00',
+             order_estimated_delivery_date: '2018-01-10 00:00:00'}
+          # доставлен раньше срока → не просрочка
+          - {order_id: 'early', customer_id: 'c2', order_status: 'delivered',
+             order_purchase_timestamp: '2018-01-01 10:00:00',
+             order_approved_at: '2018-01-01 11:00:00',
+             order_delivered_carrier_date: '2018-01-02 10:00:00',
+             order_delivered_customer_date: '2018-01-05 10:00:00',
+             order_estimated_delivery_date: '2018-01-10 00:00:00'}
+          # доставлен В обещанный день, но в 18:00 → НЕ просрочка (посуточно)
+          - {order_id: 'same_day', customer_id: 'c3', order_status: 'delivered',
+             order_purchase_timestamp: '2018-01-01 10:00:00',
+             order_approved_at: '2018-01-01 11:00:00',
+             order_delivered_carrier_date: '2018-01-02 10:00:00',
+             order_delivered_customer_date: '2018-01-10 18:00:00',
+             order_estimated_delivery_date: '2018-01-10 00:00:00'}
+          # не доставлен → is_late_delivery обязан быть NULL
+          - {order_id: 'in_transit', customer_id: 'c4', order_status: 'shipped',
+             order_purchase_timestamp: '2018-01-01 10:00:00',
+             order_approved_at: '2018-01-01 11:00:00',
+             order_delivered_carrier_date: '2018-01-02 10:00:00',
+             order_delivered_customer_date: null,
+             order_estimated_delivery_date: '2018-01-10 00:00:00'}
+    expect:
+      rows:
+        - {order_id: 'late', is_late_delivery: 1, is_delivered: 1, is_canceled: 0}
+        - {order_id: 'early', is_late_delivery: 0, is_delivered: 1, is_canceled: 0}
+        - {order_id: 'same_day', is_late_delivery: 0, is_delivered: 1, is_canceled: 0}
+        - {order_id: 'in_transit', is_late_delivery: null, is_delivered: 0, is_canceled: 0}
+
+  - name: test_price_bucket_boundaries
+    description: >
+      Границы макроса price_bucket. Проверяются именно значения НА границе
+      (30, 100, 300): классическая ошибка «< против <=» иначе живёт незамеченной.
+    model: stg_order_items
+    given:
+      - input: source('olist_raw', 'order_items')
+        rows:
+          - {order_id: 'o1', order_item_id: 1, product_id: 'p', seller_id: 's',
+             shipping_limit_date: '2018-01-01 00:00:00', price: 29.99, freight_value: 0}
+          - {order_id: 'o2', order_item_id: 1, product_id: 'p', seller_id: 's',
+             shipping_limit_date: '2018-01-01 00:00:00', price: 30.00, freight_value: 0}
+          - {order_id: 'o3', order_item_id: 1, product_id: 'p', seller_id: 's',
+             shipping_limit_date: '2018-01-01 00:00:00', price: 100.00, freight_value: 0}
+          - {order_id: 'o4', order_item_id: 1, product_id: 'p', seller_id: 's',
+             shipping_limit_date: '2018-01-01 00:00:00', price: 300.00, freight_value: 0}
+    expect:
+      rows:
+        - {order_id: 'o1', price_segment: 'LOW'}
+        - {order_id: 'o2', price_segment: 'MEDIUM'}
+        - {order_id: 'o3', price_segment: 'HIGH'}
+        - {order_id: 'o4', price_segment: 'VERY_HIGH'}
+
+  - name: test_reviews_deduplicated_to_one_per_order
+    description: >
+      Дедупликация отзывов: у заказа с двумя отзывами должен остаться ровно
+      один — последний по review_answer_timestamp. Без этого соединение
+      с заказами размножит строки и сместит все метрики по отзывам.
+    model: stg_order_reviews
+    given:
+      - input: source('olist_raw', 'order_reviews')
+        rows:
+          - {review_id: 'r_old', order_id: 'o1', review_score: 1,
+             review_comment_title: null, review_comment_message: null,
+             review_creation_date: '2018-01-01 00:00:00',
+             review_answer_timestamp: '2018-01-02 00:00:00'}
+          - {review_id: 'r_new', order_id: 'o1', review_score: 5,
+             review_comment_title: null, review_comment_message: null,
+             review_creation_date: '2018-01-03 00:00:00',
+             review_answer_timestamp: '2018-01-04 00:00:00'}
+          - {review_id: 'r_solo', order_id: 'o2', review_score: 2,
+             review_comment_title: null, review_comment_message: null,
+             review_creation_date: '2018-01-01 00:00:00',
+             review_answer_timestamp: '2018-01-02 00:00:00'}
+    expect:
+      rows:
+        - {order_id: 'o1', review_id: 'r_new', review_score: 5, is_bad_review: 0, is_good_review: 1}
+        - {order_id: 'o2', review_id: 'r_solo', review_score: 2, is_bad_review: 1, is_good_review: 0}
+
+  - name: test_products_unknown_category_fallback
+    description: >
+      Товар без категории и товар с категорией, которой нет в справочнике,
+      обязаны получить 'unknown' и остаться в выборке. Проверяет и coalesce,
+      и защиту nullif от подстановки пустой строки при LEFT JOIN в ClickHouse.
+    model: stg_products
+    given:
+      - input: source('olist_raw', 'products')
+        rows:
+          - {product_id: 'p_ok', product_category_name: 'beleza_saude'}
+          - {product_id: 'p_null', product_category_name: null}
+          - {product_id: 'p_missing', product_category_name: 'pc_gamer'}
+      - input: ref('product_category_name_translation')
+        rows:
+          - {product_category_name: 'beleza_saude', product_category_name_english: 'health_beauty'}
+    expect:
+      rows:
+        - {product_id: 'p_ok', product_category_name: 'beleza_saude',
+           product_category_name_english: 'health_beauty'}
+        - {product_id: 'p_null', product_category_name: 'unknown',
+           product_category_name_english: 'unknown'}
+        - {product_id: 'p_missing', product_category_name: 'pc_gamer',
+           product_category_name_english: 'unknown'}
+
+  - name: test_geolocation_collapsed_to_centroid
+    description: >
+      Две проверки сразу. Первая: несколько точек на один zip-префикс
+      схлопываются в одну строку со средними координатами — иначе соединение
+      с клиентами размножит заказы в десятки раз. Вторая: координаты за
+      пределами Бразилии отсеиваются ДО усреднения. В сыром датасете таких
+      точек 11, и одна из них растягивает расстояние до 8 678 км при
+      максимальном размахе страны около 4 400 км.
+    model: stg_geolocation
+    given:
+      - input: source('olist_raw', 'geolocation')
+        rows:
+          # Сан-Паулу: две точки одного префикса → центроид между ними
+          - {geolocation_zip_code_prefix: 1001, geolocation_lat: -23.5,
+             geolocation_lng: -46.6, geolocation_city: 'sao paulo', geolocation_state: 'SP'}
+          - {geolocation_zip_code_prefix: 1001, geolocation_lat: -23.7,
+             geolocation_lng: -46.8, geolocation_city: 'sao paulo', geolocation_state: 'SP'}
+          # Выброс в том же префиксе: координаты Азии. Должен быть отброшен
+          # и НЕ повлиять на центроид Сан-Паулу
+          - {geolocation_zip_code_prefix: 1001, geolocation_lat: 42.18,
+             geolocation_lng: 121.11, geolocation_city: 'somewhere', geolocation_state: 'SP'}
+          # Рио: одна корректная точка
+          - {geolocation_zip_code_prefix: 2002, geolocation_lat: -22.9,
+             geolocation_lng: -43.2, geolocation_city: 'rio', geolocation_state: 'RJ'}
+          # Префикс целиком из выбросов — исчезает из выборки полностью
+          - {geolocation_zip_code_prefix: 3003, geolocation_lat: 51.5,
+             geolocation_lng: -0.12, geolocation_city: 'london', geolocation_state: 'XX'}
+    expect:
+      rows:
+        - {zip_code_prefix: 1001, latitude: -23.6, longitude: -46.7, city: 'sao paulo',
+           state: 'SP', points_cnt: 2}
+        - {zip_code_prefix: 2002, latitude: -22.9, longitude: -43.2, city: 'rio',
+           state: 'RJ', points_cnt: 1}
