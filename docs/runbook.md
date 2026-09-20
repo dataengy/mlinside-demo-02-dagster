@@ -39,7 +39,7 @@ Snapshot (`dbt/seeds/raw/*.csv`, ~8 МБ) хранится через git-lfs: �
 
 | Рецепт | Что делает |
 |---|---|
-| `just dev` | `dg dev` на порту из `.env` (`DAGSTER_PORT=3111`) |
+| `just dev` | `dg dev` на порту из `.env` (`DAGSTER_PORT=3000`) |
 | `just mlflow` | MLflow UI на `MLFLOW_PORT=5001` (5000 на macOS занят AirPlay) |
 | `just check` | `dg check defs` + `ruff check` + `dbt parse` — без сети, без UI |
 | `just test` / `just test-e2e` / `just test-all` | smoke+unit+integration / e2e / всё |

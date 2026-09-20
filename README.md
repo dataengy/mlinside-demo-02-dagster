@@ -25,7 +25,7 @@ Ingestion здесь — предпосылка, а не блок демо: да
 brew install just            # или: uv tool install rust-just
 just install                 # uv sync
 just demo-prepare            # raw-snapshot → DuckDB, dbt deps, baseline-версия модели (без алиаса)
-just dev                     # Dagster UI: http://127.0.0.1:3111
+just dev                     # Dagster UI: http://127.0.0.1:3000
 just --list                  # все рецепты
 ```
 

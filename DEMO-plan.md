@@ -1,6 +1,7 @@
-# DEMO — шпаргалка показа (≤30 минут)
+# DEMO-plan — план показа по блокам (≤30 минут)
 
 > Ревизия v3, 2026-09-20. Рассказчик — DE; аудитория — MLE/MLOps. Тезис: **Dagster соединяет dbt-модели и
+> Слайдовая версия для докладчика — [`DEMO.md`](DEMO.md); этот файл — планирование блоков («до», действия, UI, fallback).
 > ML-артефакты в один asset graph — видно, из чего получена модель, что проверено и какой версией рассчитаны
 > предсказания.** Решения — [`docs/decisions.md`](docs/decisions.md); операционные детали и сбои —
 > [`docs/runbook.md`](docs/runbook.md); контракты — [`docs/contracts/`](docs/contracts/).
@@ -34,7 +35,7 @@
 just clean all           # дропает raw/derived, MLflow-эксперимент и реестр
 just demo-prepare        # raw-snapshot → DuckDB, dbt deps, baseline-версия модели БЕЗ алиаса
 just mlflow              # MLflow UI на :5001 в фоне
-just dev                 # Dagster UI на :3111
+just dev                 # Dagster UI на :3000
 ```
 
 Проверить: `just check` зелёный; в UI граф без материализаций (кроме `raw/*`); MLflow → Models → одна версия,
