@@ -65,5 +65,9 @@ exclude = ["dbt", ".claude"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
+# Форматтер держит код в 100; для docstring/комментариев/строк-описаний на русском допускаем 120.
+[tool.ruff.lint.pycodestyle]
+max-line-length = 120
+
 [tool.ruff.lint.isort]
 known-first-party = ["olist_ml"]

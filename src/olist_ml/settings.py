@@ -74,8 +74,9 @@ class Settings(BaseSettings):
     # --- ML (ADR-06, ADR-07, ADR-13) ---
     ML_DATA_DIR: Path = PROJECT_ROOT / "data" / "ml"
     ML_TEST_FRAC: float = 0.2
-    # Порог gate измеряется на shipped snapshot на M3 (5 сидов, минимум − 0.02); 0.60 — заглушка.
-    ML_MIN_ROC_AUC: float = 0.60
+    # Порог gate измерен на shipped snapshot (scripts/measure_gate.py, 2026-09-21): LogReg по 5 сидам
+    # ROC AUC 0.629–0.689, median 0.661 → min − 0.02 = 0.61.
+    ML_MIN_ROC_AUC: float = 0.61
     ML_SCORE_THRESHOLD: float = 0.5
     # Сид baseline из demo-prepare (ADR-07a, A): отличается от RANDOM_STATE → другой fingerprint.
     ML_BASELINE_RANDOM_STATE: int = 7

@@ -113,9 +113,9 @@ positive rate, fingerprint) → `model` (ссылка на MLflow run) → `mode
 обычный sklearn Pipeline — вы напишете модель лучше меня. Для нас важно, откуда пришли признаки, что прошло
 проверку, что попало в реестр».
 
-**3.3 Gate падает (2 мин).** Launchpad `train_job` → run config `quality_gate: {min_roc_auc: 0.99}` (⚠ имя
-поля — после M3) → `model_evaluation` зелёный, `quality_gate` **красный**, `model_registered` **не запущен**
-(blocking). В MLflow: новой версии нет, alias не тронут.
+**3.3 Gate падает (2 мин).** Launchpad `train_job` → run config
+`ops: {model_evaluation_quality_gate: {config: {min_roc_auc: 0.99}}}` → `model_evaluation` зелёный,
+`quality_gate` **красный**, `model_registered` **не запущен** (blocking). В MLflow: новой версии нет, alias не тронут.
 
 **Что видно.** Metadata ассетов; MLflow run и версия; красный gate.
 

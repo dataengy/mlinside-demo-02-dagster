@@ -200,9 +200,17 @@ source (`orders`, `order_items`, …) и транслируются в `raw/{{ n
   (`data/ml/train_<fingerprint>.parquet`, `holdout_…`); `model_evaluation` читает holdout-снапшот, а не
   перечитывает витрину (§6.5 ревизии).
 **Последствия.** Единственная ML-остановка в кадре — утечка: `delivery_delay_days` даёт почти идеальную метрику,
-но недоступен в момент scoring → его нет в контракте. Конкретный AUC в docs не обещаем до воспроизведения
-на текущем коде. `purchase_month` как признак — оговорка «память об инцидентах» остаётся, если признак войдёт в
-список.
+но недоступен в момент scoring → его нет в контракте. `purchase_month` вошёл в список — оговорка «память об
+инцидентах» остаётся.
+
+**Факты M3 (2026-09-21).** Признаки (10): `items_cnt, order_value, freight_share, max_installments,
+customer_seller_distance_km, estimated_delivery_span_days, purchase_month, total_weight_g` + `customer_state,
+main_payment_type` (`ml/features.py`). Измерение `scripts/measure_gate.py` на snapshot (4 780 строк с target,
+positive rate 6.8 %): LogReg по сидам 1/7/42/123/2026 → ROC AUC 0.682/0.629/0.648/0.661/0.689, PR AUC 0.09–0.20;
+**`ML_MIN_ROC_AUC = 0.61`** (min − 0.02). LogReg стабилен — HGB не понадобился. Op asset-check'а называется
+`<asset>_<check>` → run config для «gate падает»: `ops.model_evaluation_quality_gate.config.min_roc_auc`.
+Гоча: `from __future__ import annotations` в модуле с ассетами ломает резолв `dg.Config` («'TrainConfig' cannot
+be resolved») — в `defs/ml/assets.py` его нет намеренно.
 
 ## ADR-07. Свой `MlflowResource`; регистрация ≠ promotion; идемпотентность по `dataset_fingerprint`
 

@@ -1,7 +1,9 @@
 # Feature contract: витрина, обучающая выборка, scoring input, predictions
 
-> ADR-14, ADR-06, ADR-13. Четыре разных объекта — четыре ассета в графе. Список признаков ниже — **кандидаты**;
-> итоговые 8–10 утверждаются на шаге M3 после измерения на shipped snapshot.
+> ADR-14, ADR-06, ADR-13. Четыре разных объекта — четыре ассета в графе. Витрина хранит колонки-кандидаты;
+> **в модель входят 10** (утверждено на M3, `src/olist_ml/ml/features.py`): numeric `items_cnt`, `order_value`,
+> `freight_share`, `max_installments`, `customer_seller_distance_km`, `estimated_delivery_span_days`,
+> `purchase_month`, `total_weight_g`; categorical `customer_state`, `main_payment_type`.
 
 ## Формулировка задачи
 

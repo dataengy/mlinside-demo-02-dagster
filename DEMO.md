@@ -241,7 +241,15 @@ just train                 # fallback: uv run dg launch --job train_job
 
 **Главный поинт:** _blocking check_ по ROC AUC — <u>одна метрика, одна причина остановки</u>.
 
-- Launchpad `train_job` → run config `quality_gate: {min_roc_auc: 0.99}` (⚠ имя поля после M3) → Launch.
+- Launchpad `train_job` → run config (op asset-check'а называется `<asset>_<check>`):
+
+```yaml
+ops:
+  model_evaluation_quality_gate:
+    config: {min_roc_auc: 0.99}
+```
+
+  → Launch. Порог по умолчанию — `ML_MIN_ROC_AUC=0.61` (измерен на snapshot: LogReg по 5 сидам 0.63–0.69).
 - `model_evaluation` зелёный, `quality_gate` **красный**, `model_registered` не запущен.
 - MLflow: новой версии нет, alias не тронут.
 - «Порог мы подняли честно — через конфигурацию, а не подсунули модель похуже. Порог по умолчанию измерен на

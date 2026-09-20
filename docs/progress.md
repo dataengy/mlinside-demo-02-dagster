@@ -4,7 +4,15 @@
 
 ## MVP
 
-- [ ] M2 dbt как ассеты и checks — ветка `feat/m2-dbt-assets-checks` — 2026-09-21 —
+- [ ] M3 ML контур A — ветка `feat/m3-ml-train-gate-register` — 2026-09-21 —
+  `ml/features.py` (контракт 10 признаков, хеш-сплит, LogReg Pipeline, fingerprint), ассеты
+  `training_dataset` (snapshot train/holdout parquet) → `model` (MLflow run) → `model_evaluation` (holdout) →
+  `quality_gate` (blocking, `GateConfig.min_roc_auc`) → `model_registered` (версия без алиаса, идемпотентно по
+  fingerprint); `train_job` = ML ∪ blocking dbt-checks витрины (ADR-04a A) + `AutomationCondition.eager() &
+  all_deps_blocking_checks_passed()` на `training_dataset` (B); порог измерен `scripts/measure_gate.py`:
+  0.629–0.689 → `ML_MIN_ROC_AUC=0.61`. Тесты: unit features, integration train_job (версия 1 без алиаса,
+  повтор → `reused_existing`, gate 0.99 → registered не запущен, сломанный контракт → ML пропущена).
+- [x] M2 dbt как ассеты и checks — `4240937` (PR #13) — 2026-09-21 —
   `defs/dbt/defs.yaml` (`select +mart_order_features`, `exclude path:seeds/raw`, группы по слою, owners/tags;
   `op.name` у обоих компонентов — иначе граф не сшивается), `mart_order_features.sql` + yml (все заказы,
   target NULL у недоставленных; тесты unique/not_null/accepted_range → blocking checks),

@@ -42,7 +42,22 @@ dbt_build_job = dg.define_asset_job(
     description="«Одна кнопка» dbt build: модели + тесты в одном run — для CI и диагностики.",
 )
 
+ML = dg.AssetSelection.groups("ml")
+# ADR-04a (A): blocking dbt-checks витрины идут в одном run с ML — провал контракта пропускает ML-ветку.
+MART_CHECKS = MART - MART.without_checks()
+
+train_job = dg.define_asset_job(
+    "train_job",
+    selection=ML | MART_CHECKS,
+    description=(
+        "Обучить кандидата: checks витрины → training_dataset → model → model_evaluation → "
+        "quality_gate (blocking) → model_registered (версия без алиаса)."
+    ),
+)
+
 
 @dg.definitions
 def jobs() -> dg.Definitions:
-    return dg.Definitions(jobs=[demo_prepare_job, feature_mart_job, dq_job, dbt_build_job])
+    return dg.Definitions(
+        jobs=[demo_prepare_job, feature_mart_job, dq_job, dbt_build_job, train_job]
+    )

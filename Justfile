@@ -142,9 +142,13 @@ demo-fix:
 demo-sql-change:
     uv run python scripts/demo_patch.py sql-change && just dbt-parse
 
-# Обучить кандидата → gate → версия без алиаса (M3)
+# Обучить кандидата: checks витрины → training_dataset → model → evaluation → gate → версия без алиаса
 train:
     uv run dg launch --job train_job
+
+# Измерить порог quality gate на snapshot: 5 сидов → min − 0.02 (нужна материализованная витрина)
+measure-gate:
+    uv run python scripts/measure_gate.py
 
 # Перевести алиас champion (M4)
 promote:
