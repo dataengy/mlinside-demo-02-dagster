@@ -83,7 +83,9 @@ uv run dg dev
 | `quality_gate` красный на честном пороге | порог из `.env` не перемерен на текущем snapshot | пересчитать по 5 сидам (M3), обновить `.env.example` |
 | seeds — LFS-указатели вместо CSV | `git lfs` не установлен | `git lfs install && git lfs pull` |
 | Freshness всегда UNKNOWN | демон freshness выключен | `dagster.yaml`: `freshness: {enabled: true}`; перезапуск `dg dev` |
-| Telegram-алерт не приходит | `ALERTS_ENABLED=false` (dry-run) или пустые `TG_*` | заполнить `.env`, проверить лог сенсора |
+| Telegram-алерт не приходит | `ALERTS_ENABLED=false` (dry-run) или пустые `TG_*` | заполнить `.env`, `just tg-test`; лог сенсора `alert_on_run_failure` (Automation) |
+| Сенсор тикает SKIPPED «empty result» без лога после упавшего run | run без `remote_job_origin` (`dg launch`) отфильтрован по code location | `monitor_all_code_locations=True` в `@run_failure_sensor` |
+| CI: `failed to fetch some objects from …/info/lfs` | LFS-объекты seeds не загружены на GitHub | `git lfs push --all origin` (нужен push-доступ) |
 | `just`: command not found | раннер не установлен | `brew install just` / `uv tool install rust-just` |
 
 ## 6. Расширенное демо (не MVP)

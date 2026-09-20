@@ -156,6 +156,10 @@ train:
 measure-gate:
     uv run python scripts/measure_gate.py
 
+# Проверить Telegram-канал: живая отправка, если в .env заполнены ALERTS_ENABLED/TG_BOT_TOKEN/TG_CHAT_ID, иначе dry-run
+tg-test *text:
+    uv run python -m olist_ml.alerts.telegram {{text}}
+
 # Перевести алиас champion на версию (по умолчанию — последняя): `just promote` | `just promote 2`
 promote version="":
     #!/usr/bin/env bash

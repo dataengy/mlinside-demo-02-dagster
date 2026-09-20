@@ -4,6 +4,17 @@
 
 ## MVP
 
+- [ ] M7 Telegram-алерт — ветка `feat/m7-telegram-alert` — 2026-09-21 — `alerts/telegram.py` (`format_run_failure`,
+  `send_telegram` одним `httpx.post`, dry-run без `ALERTS_ENABLED`/`TG_*`), `defs/automation/sensors.py`:
+  `@dg.run_failure_sensor alert_on_run_failure` (все джобы, `default_status=RUNNING`, 30 с), `just tg-test [text]`;
+  5 unit-тестов на `httpx.MockTransport` (dry-run, POST в `sendMessage`, HTTP-ошибка, сенсор в defs);
+  `just check` ✓, `just test` 45 passed. В UI: `demo-break → feature-mart → dq` (FAILURE) → тик сенсора SUCCESS с
+  dry-run текстом (job, ссылка на run, первая строка ошибки). Подводный камень: без `monitor_all_code_locations=True`
+  run'ы `dg launch` (нет `remote_job_origin`) пропускаются молча. Живая доставка не проверена: в `.env` нет
+  `TG_BOT_TOKEN`/`TG_CHAT_ID`.
+  CI PR #17 был красный (`actions/checkout lfs: true` → «failed to fetch some objects from …/info/lfs»):
+  LFS-объекты не ушли на GitHub при push через inline credential helper — догружены `git lfs push --all origin`,
+  job перезапущен.
 - [ ] M6 CI — ветка `feat/m6-ci` — 2026-09-21 — `.github/workflows/ci.yml`: job `ci` = `just install` (сеть) →
   `just check` → `just test` (офлайн), job `e2e` (`just test-e2e`, не на PR); `checkout lfs: true` для snapshot;
   `extractions/setup-just@v3`, `astral-sh/setup-uv@v10.1.0`; без секретов. Новый `tests/e2e/test_demo_flow.py`

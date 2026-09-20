@@ -20,7 +20,7 @@ dagster-dbt 0.29.23, mlflow 3.15) и только потом попадает в
 - [ ] M4 Promotion и batch inference: `promote_job` (алиас `champion`), baseline-версия в `demo-prepare`, `scoring_input` → `predictions` (batch_id, model_version, идемпотентно, понятный fail без champion), `score_job` — ADR-07 ADR-13 #ml #mvp (#6)
 - [ ] M5 Выборочный пересчёт и freshness: ⚠ проверить статусы UI после правки SQL витрины (default `code_version`), `FreshnessPolicy.time_window` на `mart_order_features`, заготовленные патчи для DEMO (`demo-break`/`demo-fix`), очистка `clean raw|derived|all` + тесты идемпотентности — ADR-10 ADR-17 #dagster #mvp (#7)
 - [ ] M6 CI GitHub Actions: `ci.yml` = `just install / check / test`, e2e отдельным job, без сети и секретов — ADR-11 #ci #mvp (#8)
-- [ ] M7 Алерт: `run_failure_sensor` → Telegram (`httpx`, dry-run, unit-тест на мок), проверка живого сообщения — ADR-18 #observability #mvp (#9)
+- [ ] M7 Алерт: `run_failure_sensor` → Telegram (`httpx`, dry-run, unit-тест на мок), проверка живого сообщения — ADR-18 #observability #mvp (#9) — код + dry-run в UI готовы (`feat/m7-telegram-alert`); live-доставка ждёт `TG_BOT_TOKEN`/`TG_CHAT_ID` в `.env`
 - [ ] M8 Финал: `DEMO.md` прогнан по таймингу ≤30 мин, `docs/runbook.md` сверен с реальными командами, `just test-all` зелёный, отчёт в `docs/progress.md` #docs #tests #mvp (#10)
 
 ## Appendix / после лекции

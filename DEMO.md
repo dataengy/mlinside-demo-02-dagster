@@ -389,10 +389,12 @@ just demo-recompute        # dg launch --assets "mart_order_features,training_da
 **Главный поинт:** статус run'ов и checks — в UI; <u>один канал алерта</u> без дополнительной инфраструктуры.
 
 - Dagster UI → Runs (статусы), Asset checks (последние результаты), Freshness.
-- Сломать check и получить сообщение в Telegram от `run_failure_sensor` (⚠ проверить живую доставку на M7):
+- Сломать check и получить сообщение в Telegram от `run_failure_sensor` `alert_on_run_failure` (включён по умолчанию,
+  опрос 30 с; без `ALERTS_ENABLED=true` + `TG_*` в `.env` — dry-run: текст в логе сенсора, Automation → sensor → tick):
 
 ```bash
-just demo-break && just feature-mart && just dq   # → Telegram
+just tg-test "проверка канала"                    # заранее, до кадра: живое сообщение или dry-run
+just demo-break && just feature-mart && just dq   # → Telegram в течение ~30 с
 just demo-fix && just feature-mart && just dq
 ```
 

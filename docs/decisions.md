@@ -446,6 +446,12 @@ model_evaluation_quality_gate, model_registered`; `raw_snapshot_seed` и staging
 `@dg.run_failure_sensor` → `httpx.post` в Telegram Bot API (`TG_BOT_TOKEN`/`TG_CHAT_ID` из `.env`, dry-run при
 `ALERTS_ENABLED=false`), unit-тест на мок HTTP. Grafana/Prometheus/Loki — расширенное демо (ADR-12).
 **Последствия.** Никаких новых сервисов в MVP; в кадре — сообщение в Telegram после сломанного check/run.
+**Факт M7 (2026-09-21).** Сенсор `alert_on_run_failure` мониторит все джобы, `default_status=RUNNING` (в `dg dev`
+ничего не включать), `minimum_interval_seconds=30`; текст = job, ссылка на run, первая строка ошибки. Без
+`ALERTS_ENABLED=true` — warning в логе тика сенсора вместо отправки. Проверка канала до кадра: `just tg-test`.
+Обязателен `monitor_all_code_locations=True`: run'ы из `dg launch` / `dagster job execute` не несут
+`remote_job_origin` (location=None), и без флага сенсор не проходит фильтр «тот же code location», молча двигая
+курсор мимо упавшего run (подтверждено: тик SKIPPED без лога → после флага тик SUCCESS с текстом).
 
 ---
 
