@@ -1,5 +1,7 @@
 # mlinside-demo-02-dagster
 
+[![ci](https://github.com/dataengy/mlinside-demo-02-dagster/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/dataengy/mlinside-demo-02-dagster/actions/workflows/ci.yml)
+
 Демо к лекции MLInside «Оркестрация ML-пайплайнов на Dagster» (аудитория — MLE/MLOps, рассказчик — Data
 Engineer) на датасете [Olist](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce).
 
@@ -34,8 +36,10 @@ just --list                  # все рецепты
 
 ## Статус
 
-Ревизия плана v3 (2026-09-20) принята; код пишется по шагам [`.claude/TODO.md`](.claude/TODO.md) (M0–M8).
-Команды выше появятся по мере шагов M0–M4; до этого репозиторий — документация.
+Ревизия плана v3 (2026-09-20) принята; шаги [`.claude/TODO.md`](.claude/TODO.md) M0–M6 реализованы
+(scaffold, snapshot + dbt, checks, обучение + gate + реестр, promotion + batch inference, выборочный пересчёт,
+freshness, очистка, CI); статус по шагам — [`docs/progress.md`](docs/progress.md). Осталось: M7 Telegram-алерт,
+M8 финальный прогон DEMO по таймингу.
 
 ## Навигация
 

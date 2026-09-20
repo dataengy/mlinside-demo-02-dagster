@@ -4,7 +4,11 @@
 
 ## MVP
 
-- [ ] M5 Выборочный пересчёт, freshness, очистка — ветка `feat/m5-recompute-freshness-clean` — 2026-09-21 —
+- [ ] M6 CI — ветка `feat/m6-ci` — 2026-09-21 — `.github/workflows/ci.yml`: job `ci` = `just install` (сеть) →
+  `just check` → `just test` (офлайн), job `e2e` (`just test-e2e`, не на PR); `checkout lfs: true` для snapshot;
+  `extractions/setup-just@v3`, `astral-sh/setup-uv@v10.1.0`; без секретов. Новый `tests/e2e/test_demo_flow.py`
+  (весь сюжет одним тестом). Бейдж в README. Зелёный run — после push ветки (см. PR).
+- [x] M5 Выборочный пересчёт, freshness, очистка — `2b50562` + `c668b4c` (PR #16) — 2026-09-21 —
   живьём подтверждено: после `just demo-sql-change` + reload только `mart_order_features` → `STALE`
   (`CODE: has a new code version`), ML-ассеты `FRESH`; `just demo-recompute` (`dg launch --assets …`) выполнил
   `dbt_feature_branch → training_dataset → model → model_evaluation → quality_gate → model_registered`, raw/staging

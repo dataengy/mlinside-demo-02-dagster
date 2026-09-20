@@ -55,7 +55,7 @@ def _isolate_stores(
     demo_prepare_job обучает baseline (ADR-07a A) → без изоляции тест засорял бы реальный реестр MLflow
     и глобальный registry URI процесса. Тесты могут переопределить пути своими monkeypatch'ами.
     """
-    if "integration" not in str(request.node.fspath):
+    if not any(part in str(request.node.fspath) for part in ("integration", "e2e")):
         return
     monkeypatch.setenv("DUCKDB_PATH", str(tmp_path / "olist.duckdb"))
     monkeypatch.setenv("DAGSTER_HOME", str(tmp_path / "home"))
