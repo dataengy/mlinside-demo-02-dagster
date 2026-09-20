@@ -1,35 +1,35 @@
 # TODO — mlinside-demo-02-dagster
 
-Пошаговый план. Решения — [`docs/decisions.md`](../docs/decisions.md) (ADR-01…ADR-13), целевое
-состояние — [`docs/overview.md`](../docs/overview.md), полный план всех четырёх демо —
-[`PLAN.md`](PLAN.md), постановка — [`PROMPT.md`](PROMPT.md).
+Пошаговый план (ревизия v3, 2026-09-20). Решения — [`docs/decisions.md`](../docs/decisions.md)
+(ADR-01…ADR-18), целевое состояние и appendix — [`docs/overview.md`](../docs/overview.md), сценарий показа —
+[`DEMO.md`](../DEMO.md), контракты — [`docs/contracts/`](../docs/contracts/). Архив прежнего плана —
+[`.archive/`](.archive/) (факты и разведка, не требования).
 
-**Правила для каждого шага:** TDD (failing test → код → PASS), `make check && make test` зелёные,
-запуск `make dev` и проверка UI, строка в `docs/progress.md`, коммит Conventional Commits, push.
-Шаги идут строго по порядку: M0 → M9. Детализация крупных — в [`tasks/`](tasks/).
+**Правила для каждого шага:** минимальное изменение, проверяемое в GUI Dagster → `just check && just test`
+зелёные → отчёт пользователю: что и где посмотреть + 1–3 вопроса от простого к сложному → строка в
+`docs/progress.md` → коммит Conventional Commits; push — после подтверждения. Шаги строго по порядку.
+Всё, что помечено «⚠ проверить», сначала подтверждается на установленных версиях (dagster 1.13.23,
+dagster-dbt 0.29.23, mlflow 3.15) и только потом попадает в DEMO.
 
 ## MVP
 
-- [ ] M0 Scaffold `create-dagster`, `settings.py` + `.env.example`, ядро Makefile, `dagster.yaml`, smoke-тесты — [tasks/ghi-m0-scaffold.md](tasks/ghi-m0-scaffold.md), ADR-02 ADR-09 #scaffold #mvp
-- [ ] M1 Копия dbt из канона: `sync_dbt_from_canonical.sh`, `profiles.yml`, макросы, `sources.yml` с `meta.dagster.asset_key`, модель `mart_order_features` — [tasks/ghi-m1-dbt-copy.md](tasks/ghi-m1-dbt-copy.md), ADR-04 ADR-05 #dbt #mvp
-- [ ] M2 Ingest dlt из Kaggle: `sampling.py`, `kaggle_olist.py`, `loads.py`, `defs/ingest/defs.yaml`, фикстуры, `ingest_job` — [tasks/ghi-m2-ingest-dlt.md](tasks/ghi-m2-ingest-dlt.md), ADR-03 #ingest #mvp
-- [ ] M3 `DbtProjectComponent` с `select +mart_order_features`, связный граф от `raw/*`, `dbt_build_job` — ADR-04 ADR-05 #dbt #mvp
-- [ ] M4 ML: ассеты `training_dataset → model → model_evaluation → model_registered`, `MlflowResource`, `quality_gate`, калибровка `ML_MIN_ROC_AUC` на сэмпле, `ml_job` и `full_pipeline_job` — [tasks/ghi-m4-ml.md](tasks/ghi-m4-ml.md), ADR-06 ADR-07 ADR-13 #ml #mvp
-- [ ] M5 Очистка данных: `clean_raw_job` / `clean_derived_job` / `clean_all_job`, Make-цели `clean-raw` `clean-derived` `clean-all`, тесты идемпотентности каждого этапа — ADR-10 #maintenance #mvp
-- [ ] M6 CI GitHub Actions: `ci.yml` из Make-целей (`install` / `check` / `test`, e2e на main) — ADR-11 #ci #mvp
-- [ ] M7 Docker: `Dockerfile` multi-stage uv, `docker-compose.yml` профиль `core` (Postgres + webserver + daemon + MLflow), `deploy/dagster.prod.yaml` — [tasks/ghi-m7-compose.md](tasks/ghi-m7-compose.md), ADR-12 #docker #mvp
-- [ ] M8 Сквозные тесты: e2e `clean_all → full_pipeline → повтор`, зелёный `make test-all`, отчёт в `docs/progress.md` #tests #mvp
-- [ ] M9 Финал документации: `docs/runbook.md` сверен с реальными командами, [`DEMO.md`](../DEMO.md) прогнан целиком, бейдж CI в README #docs #mvp
+- [ ] M0 Scaffold `create-dagster project olist_ml` (⚠ проверить команду scaffold и `defs.yaml` компонента), `settings.py` + `.env.example`, `Justfile` из черновика Makefile, `dagster.yaml` (`freshness.enabled`), smoke `dg check defs` — ADR-02 ADR-09 ADR-15 #scaffold #mvp
+- [ ] M1 dbt-копия канона + shipped snapshot: `sync_dbt_from_canonical.sh`, `profiles.yml`, макросы, `sources.yml` с `meta.dagster.asset_key`, seeds `raw/*` (~5 000 заказов, git-lfs), `defs/ingest/defs.yaml` (seeds → `raw/*`), `just demo-prepare`, `docs/contracts/raw.md` + smoke-тест контракта — ADR-03 ADR-05 ADR-14 #dbt #ingest #mvp
+- [ ] M2 dbt как ассеты и checks: `defs/dbt/defs.yaml` (`select +mart_order_features`, owners/tags), `mart_order_features.sql` + yml, `feature_mart_job` / `dq_job` раздельно, ⚠ проверить blocking провала dbt-теста для ML-ветки, негативный e2e «сломанный контракт → check failed → ML не выполнена» — ADR-04 ADR-05 #dbt #mvp
+- [ ] M3 ML контур A: `docs/contracts/features.md`, `training_dataset` (snapshot train/holdout), `model` (LogReg Pipeline, 8–10 признаков), `model_evaluation`, `quality_gate` (порог измерить по 5 сидам), `model_registered` без алиаса, `MlflowResource`, `train_job` — ADR-06 ADR-07 ADR-14 #ml #mvp
+- [ ] M4 Promotion и batch inference: `promote_job` (алиас `champion`), baseline-версия в `demo-prepare`, `scoring_input` → `predictions` (batch_id, model_version, идемпотентно, понятный fail без champion), `score_job` — ADR-07 ADR-13 #ml #mvp
+- [ ] M5 Выборочный пересчёт и freshness: ⚠ проверить статусы UI после правки SQL витрины (default `code_version`), `FreshnessPolicy.time_window` на `mart_order_features`, заготовленные патчи для DEMO (`demo-break`/`demo-fix`), очистка `clean raw|derived|all` + тесты идемпотентности — ADR-10 ADR-17 #dagster #mvp
+- [ ] M6 CI GitHub Actions: `ci.yml` = `just install / check / test`, e2e отдельным job, без сети и секретов — ADR-11 #ci #mvp
+- [ ] M7 Алерт: `run_failure_sensor` → Telegram (`httpx`, dry-run, unit-тест на мок), проверка живого сообщения — ADR-18 #observability #mvp
+- [ ] M8 Финал: `DEMO.md` прогнан по таймингу ≤30 мин, `docs/runbook.md` сверен с реальными командами, `just test-all` зелёный, отчёт в `docs/progress.md` #docs #tests #mvp
 
-## После MVP
+## Appendix / после лекции
 
-- [ ] P1 Ingest v1 `dbt seed` из сэмпл-CSV и переключатель `INGEST_MODE=seed|dlt` — PLAN D2 #ingest
-- [ ] P2 Раздельные стадии `transform_job` / `dq_job` — падение dbt-теста как красный чек при зелёной модели — PLAN D3 #dbt
-- [ ] P3 Source freshness: `dbt source freshness` как `multi_asset_check` + `FreshnessPolicy.time_window` — PLAN D4 #dbt
-- [ ] P4 Python-стиль интеграций: `integrations_python/`, `INTEGRATIONS_STYLE`, `test_style_parity` — PLAN D1 #scaffold
-- [ ] P5 Batch-инференс: `predictions` (daily partitions, загрузка по алиасу `@champion`), `prediction_monitoring`, `SIM_TODAY` — PLAN лейн L-H, [overview §6.3 и §6.5](../docs/overview.md) #ml
-- [ ] P6 Observability: профиль `observability` в compose, экспортер метрик, Grafana dashboard и алерты в Telegram — PLAN D10 #observability
-- [ ] P7 `run_failure_sensor` → Telegram как «уровень 0» алертинга с unit-тестом на мок HTTP — PLAN D10 #observability
-- [ ] P8 `docs/deploy/`: Hetzner VM и Dagster+ (Serverless/Hybrid), сравнительная таблица, mermaid — PROMPT шаг 4 #docs
-- [ ] P9 Agentic BRD-watch: хук, скилл, субагент из `.claude/drafts/agentic/` — PLAN D13 #agentic
-- [ ] P10 Сенсор на `data/incoming/` или `AutomationCondition.eager()` на ML-ассетах — PLAN лейн L-D #ml
+- [ ] P1 dlt из Kaggle как stretch по критериям ADR-03 (`.claude/drafts/ingest/`), паритет контракта raw на двух загрузчиках — #ingest
+- [ ] P2 Evidently HTML-отчёт по `predictions` как расширенное демо — ADR-16 #observability
+- [ ] P3 Docker Compose core + Grafana-стек + экспортер (`.claude/drafts/observability/`), `docs/observability.md` — ADR-12 #docker #observability
+- [ ] P4 Партиции `predictions`, backfill, `SIM_TODAY`, `prediction_monitoring`, поздние метки — [overview §6](../docs/overview.md) #ml
+- [ ] P5 `TrainConfig.split = hash|time`, challenger/champion сравнение на одном holdout — overview §6.2 #ml
+- [ ] P6 `dbt source freshness` как asset checks; `INTEGRATIONS_STYLE=python`, `integrations_python/` — архив D1 D4 #dbt
+- [ ] P7 `docs/deploy/`: Hetzner VM и Dagster+ (Serverless/Hybrid), сравнительная таблица, mermaid — #docs
+- [ ] P8 Agentic BRD-watch: хук, скилл, субагент из `.claude/drafts/agentic/` — архив D13 #agentic
