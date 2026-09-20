@@ -126,6 +126,22 @@ feature-mart:
 dq:
     uv run dg launch --job dq_job
 
+# «Одна кнопка» dbt build: модели + тесты в одном run (CI/диагностика)
+dbt-build:
+    uv run dg launch --job dbt_build_job
+
+# Сломать контракт витрины (дубли order_id) → модель зелёная, check красный; затем dbt-parse
+demo-break:
+    uv run python scripts/demo_patch.py break && just dbt-parse
+
+# Вернуть витрину к эталону; затем dbt-parse (после этого — `just feature-mart && just dq`)
+demo-fix:
+    uv run python scripts/demo_patch.py fix && just dbt-parse
+
+# Безобидная правка SQL витрины → меняется code_version (S16); затем dbt-parse
+demo-sql-change:
+    uv run python scripts/demo_patch.py sql-change && just dbt-parse
+
 # Обучить кандидата → gate → версия без алиаса (M3)
 train:
     uv run dg launch --job train_job

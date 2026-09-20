@@ -167,6 +167,9 @@ quadrantChart
 `database: olist`, `schema: raw`, без `external_location`; seed-файлы называются как таблицы
 source (`orders`, `order_items`, …) и транслируются в `raw/{{ node.name }}`.
 **Последствия.** Переход на любой другой ingest (dlt, внешние assets) не меняет `sources.yml` (ADR-14).
+Факт M2 (0.29.23): два `DbtProjectComponent` одного dbt-проекта получают одинаковое имя op (`olist_dbt`),
+и зависимости source → seed не резолвятся (`node "olist_dbt_2" does not have output "raw__…"`) — каждому
+компоненту задан свой `op.name` (`raw_snapshot_seed`, `dbt_feature_branch`).
 Проверяется smoke-тестом `test_graph_connected` (BFS от `raw/orders` достигает все ключи).
 
 ## ADR-06. ML — чёрный ящик: одна детерминированная модель, 8–10 признаков, один blocking gate

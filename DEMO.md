@@ -146,11 +146,14 @@ just train                               # ожидаем: ML-ассеты не 
 ```
 
 - «Падение проверки не выглядит падением загрузки — и не даёт обучиться на сломанных данных».
-- Чиним и подтверждаем:
+- Чиним, **пересобираем витрину** (в DuckDB всё ещё дубли) и подтверждаем:
 
 ```bash
-just demo-fix && just dq
+just demo-fix && just feature-mart && just dq
 ```
+
+- Факт (M2): run `dq_job` при провале dbt-теста завершается **FAILURE** (dbt build возвращает ненулевой код),
+  а модель и её материализация остаются зелёными — это и есть «две разные операции» в Runs.
 
 - Реплика Cosmos: «там dbt-тест — задача в DAG; здесь — статус ассета, который можно спросить из любого места графа».
 
@@ -368,8 +371,8 @@ just demo-sql-change       # правка mart_order_features.sql (новый п
 - Сломать check и получить сообщение в Telegram от `run_failure_sensor` (⚠ проверить живую доставку на M7):
 
 ```bash
-just demo-break && just dq   # → Telegram
-just demo-fix
+just demo-break && just feature-mart && just dq   # → Telegram
+just demo-fix && just feature-mart && just dq
 ```
 
 - «Grafana/Prometheus/Loki и drift-отчёты (Evidently) — расширенное демо и docs; здесь — один экран и один канал».

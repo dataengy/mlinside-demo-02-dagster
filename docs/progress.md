@@ -4,7 +4,14 @@
 
 ## MVP
 
-- [ ] M1 dbt-копия + shipped snapshot + `demo-prepare` — ветка `feat/m1-dbt-snapshot` — 2026-09-21 —
+- [ ] M2 dbt как ассеты и checks — ветка `feat/m2-dbt-assets-checks` — 2026-09-21 —
+  `defs/dbt/defs.yaml` (`select +mart_order_features`, `exclude path:seeds/raw`, группы по слою, owners/tags;
+  `op.name` у обоих компонентов — иначе граф не сшивается), `mart_order_features.sql` + yml (все заказы,
+  target NULL у недоставленных; тесты unique/not_null/accepted_range → blocking checks),
+  `feature_mart_job` / `dq_job` / `dbt_build_job`, `scripts/demo_patch.py` (`just demo-break|fix|sql-change`);
+  тесты: граф связный raw→mart, feature_mart без checks, dq без материализаций, идемпотентность,
+  негативный сценарий «модель зелёная, unique(order_id) красный».
+- [x] M1 dbt-копия + shipped snapshot + `demo-prepare` — `afe9666` (PR #12) — 2026-09-21 —
   `just dbt-sync` (rsync канона + overlay: profiles duck, sources.yml с `meta.dagster.asset_key`, схемы без
   префикса, `month_of`), `just seeds-sample` → 8 CSV (4 918 заказов, 5.5 МБ, git-lfs) + фикстуры (496),
   `defs/ingest/defs.yaml` (`DbtProjectComponent`, `select: path:seeds/raw`, ключи `raw/<table>`),

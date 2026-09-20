@@ -9,6 +9,9 @@ attributes:
     project_dir: "{{ project_root }}/dbt"
   select: "path:seeds/raw"
   cli_args: [build]
+  # Свой op.name: оба компонента одного dbt-проекта иначе получают op `olist_dbt`, и граф не сшивается.
+  op:
+    name: raw_snapshot_seed
   translation:
     key: "raw/{{ node.name }}"
     group_name: raw
