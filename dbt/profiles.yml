@@ -1,0 +1,14 @@
+# Отличие от канона (ADR-04): только таргет duck. ClickHouse-таргет `ch` — в каноническом проекте.
+# Закоммичен намеренно: его читают CI и DbtCliResource; секретов нет.
+#
+# DUCKDB_PATH задаётся абсолютным (Justfile `export`, src/olist_ml/defs/env.py): dbt резолвит
+# относительный path от cwd (= dbt/), а .env хранит путь относительно корня проекта.
+
+olist_dbt:
+  target: "{{ env_var('DBT_TARGET', 'duck') }}"
+  outputs:
+    duck:
+      type: duckdb
+      path: "{{ env_var('DUCKDB_PATH', '../data/olist.duckdb') }}"
+      schema: main
+      threads: 4

@@ -88,6 +88,22 @@ assets/sources» — в appendix DEMO.
 check failed → ML не выполнена» — обязательный тест и блок DEMO. Source freshness (`dbt source freshness`)
 — в коде и appendix, отдельного экранного времени не получает (ADR-17 про asset freshness).
 
+### ADR-04b. `prepare_if_dev: false` — manifest собирает `just dbt-parse`, dev/check/CI офлайн
+
+**Контекст (M1, 2026-09-21, факт по исходнику dagster-dbt 0.29.23 `dbt_project.py:88–126`).** `prepare_if_dev`
+при каждой загрузке definitions запускает `dbt deps` (если есть `packages.yml`) и `dbt parse`; `dbt deps`
+ходит в hub.getdbt.com даже при установленных пакетах и падает без сети — `dg check defs`, тесты и CI
+переставали бы работать офлайн, а неудачный `dbt deps` ещё и очищает `dbt_packages/`.
+**Решение.** В обоих компонентах `prepare_if_dev: false`; `manifest.json` собирает `just dbt-parse`
+(входит в `just install`, `just check`, `just dev`; в тестах — session-фикстура `conftest.py`). Сеть нужна
+только `just install` (`uv sync`, `dbt deps`). После правки SQL: `just dbt-parse` + Reload в UI — это и есть
+«manifest при сборке артефакта» из §5.1 ревизии, показанное явно. Все dbt-команды — с **абсолютным**
+`--project-dir` (dbt кеширует `project_root` в partial parse; Dagster запускает dbt с cwd = `dbt/`,
+относительный корень ломал загрузку seeds). `DUCKDB_PATH` для dbt делается абсолютным в `defs/env.py`
+и в Justfile `export`; dbt version-check и анонимная статистика выключены.
+**Последствия.** DEMO S3/S16: «reload → manifest пересобирается» заменено на `just dbt-parse` + Reload.
+Пометка «⚠ проверить prepare_if_dev» снята.
+
 ### ADR-04a. Как провал dbt-теста останавливает ML-ветку — варианты
 
 > **Решение пользователя (2026-09-20): A + B.** `train_job` включает blocking dbt-checks витрины в один run с

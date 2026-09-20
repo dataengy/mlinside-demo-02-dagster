@@ -12,13 +12,19 @@ mlflow_host := env("MLFLOW_HOST", "127.0.0.1")
 mlflow_port := env("MLFLOW_PORT", "5001")
 mlflow_db := env("MLFLOW_DB_PATH", "data/mlflow.db")
 mlflow_uri := env("MLFLOW_TRACKING_URI", "")
-dbt_dir := env("DBT_PROJECT_DIR", "dbt")
-dbt_profiles := env("DBT_PROFILES_DIR", "dbt")
-dbt_target_path := env("DBT_TARGET_PATH", "dbt/target")
+# Абсолютные пути: dbt кеширует project_root в partial_parse, а Dagster запускает dbt с cwd = dbt/ —
+# относительный --project-dir ломает загрузку seeds ("No files found ... dbt/seeds/raw/orders.csv").
+dbt_dir := absolute_path(env("DBT_PROJECT_DIR", "dbt"))
+dbt_profiles := absolute_path(env("DBT_PROFILES_DIR", "dbt"))
+dbt_target_path := absolute_path(env("DBT_TARGET_PATH", "dbt/target"))
 
 # DAGSTER_HOME всегда внутри проекта (иначе dagster пишет в ~/.dagster); абсолютный путь нужен dg/dagster.
 export DAGSTER_HOME := absolute_path(dagster_home)
+# dbt-duckdb резолвит относительный path от cwd (= dbt/) — отдаём dbt абсолютный путь (см. defs/env.py).
+export DUCKDB_PATH := absolute_path(env("DUCKDB_PATH", "data/olist.duckdb"))
 export MLFLOW_DISABLE_AGENT_HINT := "1"
+export DBT_SEND_ANONYMOUS_USAGE_STATS := "false"
+export DBT_VERSION_CHECK := "false"
 
 # Показать рецепты
 default:
@@ -26,10 +32,10 @@ default:
 
 # --- окружение ---------------------------------------------------------------
 
-# Установить зависимости (uv sync) и пакеты dbt, если dbt-проект уже есть
+# Установить зависимости (uv sync), пакеты dbt и собрать manifest — единственный рецепт, которому нужна сеть
 install:
     uv sync
-    @[ -d "{{dbt_dir}}" ] && just dbt-deps || echo "dbt/ ещё нет — dbt deps пропущен (M1)"
+    @[ -d "{{dbt_dir}}" ] && just dbt-deps dbt-parse || echo "dbt/ ещё нет — dbt deps пропущен (M1)"
 
 # Создать .env из .env.example (не перезаписывает)
 env:
@@ -37,8 +43,9 @@ env:
 
 # --- запуск --------------------------------------------------------------------
 
-# Dagster UI (dg dev) на DAGSTER_PORT; dagster.yaml копируется в DAGSTER_HOME при первом запуске
-dev:
+# Dagster UI (dg dev) на DAGSTER_PORT; dagster.yaml копируется в DAGSTER_HOME при первом запуске;
+# manifest dbt собирается заранее (prepare_if_dev выключен — ADR-04b), после правки SQL: `just dbt-parse` + reload
+dev: dbt-parse
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p "$DAGSTER_HOME"
@@ -55,12 +62,11 @@ mlflow:
 
 # --- проверки и тесты ---------------------------------------------------------------
 
-# dg check defs + ruff + dbt parse (если dbt/ есть) — без сети и без UI
-check:
+# dbt parse (manifest) + dg check defs + ruff — без сети и без UI
+check: dbt-parse
     mkdir -p "$DAGSTER_HOME"
     uv run dg check defs
     uv run ruff check .
-    @[ -d "{{dbt_dir}}" ] && just dbt-parse || echo "dbt/ ещё нет — dbt parse пропущен (M1)"
 
 # ruff check
 lint:
@@ -87,13 +93,24 @@ ci: install check test
 
 # --- dbt ------------------------------------------------------------------------------
 
-# dbt deps
+# dbt deps (сеть: hub.getdbt.com)
 dbt-deps:
-    uv run dbt deps --project-dir "{{dbt_dir}}" --profiles-dir "{{dbt_profiles}}"
+    uv run dbt deps --no-version-check --project-dir "{{dbt_dir}}" --profiles-dir "{{dbt_profiles}}"
 
-# dbt parse → manifest.json без обращения к БД
+# dbt parse → dbt/target/manifest.json без обращения к БД и к сети
 dbt-parse:
-    uv run dbt parse --project-dir "{{dbt_dir}}" --profiles-dir "{{dbt_profiles}}" --target-path "{{dbt_target_path}}"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ ! -d "{{dbt_dir}}" ]; then echo "dbt/ ещё нет — dbt parse пропущен"; exit 0; fi
+    uv run dbt parse --quiet --no-version-check --project-dir "{{dbt_dir}}" --profiles-dir "{{dbt_profiles}}"
+
+# Копия канонического dbt-проекта + разрешённые отличия (ADR-04); CANON=<path> переопределяет источник
+dbt-sync:
+    bash scripts/sync_dbt_from_canonical.sh
+
+# Snapshot raw-таблиц (SNAPSHOT_N_ORDERS) → dbt/seeds/raw и фикстуры (FIXTURES_N_ORDERS) → tests/fixtures/raw
+seeds-sample *args:
+    uv run python scripts/make_seeds_sample.py {{args}}
 
 # --- сюжет демо (джобы появляются по шагам TODO) ------------------------------------------
 

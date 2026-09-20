@@ -47,6 +47,9 @@ Snapshot (`dbt/seeds/raw/*.csv`, ~8 МБ) хранится через git-lfs: �
 | `just feature-mart` / `just dq` / `just train` / `just promote [version]` / `just score` | пять раздельных операций сюжета (`dg launch --job …`) |
 | `just demo-prepare` | подготовка raw и зависимостей; **не** обучает, **не** делает promotion |
 | `just demo-break` / `just demo-fix` / `just demo-sql-change` | заготовленные патчи для блоков 2 и 5 DEMO |
+| `just dbt-sync` | копия канонического dbt-проекта + overlay (`CANON=<path>` — источник; ADR-04) |
+| `just seeds-sample` | snapshot raw (`SNAPSHOT_N_ORDERS`) → `dbt/seeds/raw`, фикстуры → `tests/fixtures/raw`; вход — полные CSV Kaggle |
+| `just dbt-parse` | manifest.json (ADR-04b); после правки SQL — + Reload в UI |
 | `just clean raw|derived|all` | очистка данных (ADR-10); `just clean-build` — только кеши сборки |
 | `just ci` | то же, что CI: install → check → test |
 
@@ -62,9 +65,9 @@ uv run dg scaffold defs dagster_dbt.DbtProjectComponent dbt   # ⚠ провер
 uv run dg dev
 ```
 
-`manifest.json`: в dev компонент с `prepare_if_dev: true` собирает его при загрузке definitions (`dbt parse`);
-для prod-артефакта — `prepare_project_cli_args` / `packaged_project_dir` при сборке образа (⚠ проверить).
-Живой scaffold в кадре — только во временной папке.
+`manifest.json`: компоненты работают с `prepare_if_dev: false` (ADR-04b) — manifest собирает `just dbt-parse`
+(входит в `install`/`check`/`dev`); после правки SQL — `just dbt-parse` + Reload definitions в UI. Сеть нужна
+только `just install` (`uv sync` + `dbt deps`). Живой scaffold в кадре — только во временной папке.
 
 ## 5. Типовые сбои
 

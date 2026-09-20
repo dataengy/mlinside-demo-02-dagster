@@ -75,8 +75,9 @@ just --list && just dev
 - Показать `src/olist_ml/defs/dbt/defs.yaml`: `project_dir`, `select: "+mart_order_features"`, `translation`
   (группы, описания, owners).
   - «Это YAML, а не Python: конфигурация интеграции, которую можно ревьюить как данные».
-- Роль **`manifest.json`**: dbt-граф → Dagster-граф. В dev его собирает `prepare_if_dev` при загрузке definitions;
-  в prod — при сборке артефакта (`prepare_project_cli_args` / `packaged_project_dir`) ⚠ проверить.
+- Роль **`manifest.json`**: dbt-граф → Dagster-граф. Его собирает `just dbt-parse` (входит в `install`/`check`/
+  `dev`), компоненты читают готовый файл (`prepare_if_dev: false`, ADR-04b) — так же, как prod-артефакт;
+  «магии при загрузке» нет, и сеть после `install` не нужна.
 - Как это создавалось: `uv run dg scaffold defs dagster_dbt.DbtProjectComponent dbt` ⚠ проверить.
 - Реплика Cosmos: «в Airflow 3 + Cosmos dbt-модели тоже раскладываются в задачи по manifest; разница проявится
   дальше — граф продолжится в Python без склейки».
@@ -308,7 +309,7 @@ just promote
 just demo-sql-change       # правка mart_order_features.sql (новый признак / формула freight_share)
 ```
 
-- Reload definitions в UI (manifest пересобирается `prepare_if_dev`).
+- `just dbt-parse` (manifest) → Reload definitions в UI (ADR-04b).
 - Открыть `mart_order_features` — статус «code version changed» (в dagster-dbt 0.29.23 `code_version` по
   умолчанию = `sha1(raw_sql)`; своей реализации не нужно) ⚠ проверить текст статуса.
 - «Downstream ML-ассеты <u>не помечены транзитивно</u> — и это правильно: их код не менялся, изменились бы данные

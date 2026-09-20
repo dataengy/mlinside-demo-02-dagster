@@ -12,7 +12,7 @@
 | Ключ ассета Dagster | `raw/<table>` (группа `raw`) = `meta.dagster.asset_key: [raw, <table>]` в `sources.yml` |
 | Адрес в хранилище | `olist.raw.<table>` (DuckDB `data/olist.duckdb`, схема `raw`; в prod — `<CH_RAW_DB>.<table>`) |
 | Имена таблиц | как у dbt-source `olist_raw`: `orders`, `order_items`, `order_payments`, `order_reviews`, `customers`, `sellers`, `products`, `geolocation` (без префикса `olist_` и суффикса `_dataset` из CSV) |
-| Типы | raw хранится **как приехало** — все колонки `VARCHAR` (seed `+column_types: all varchar` / dlt `dtype=str`); касты в даты/числа — в `stg_*` |
+| Типы | как при чтении CSV автотипизацией: timestamps, числа, текст (вывод `dbt seed`/agate ≈ `read_csv_auto` канона); staging-модели канона **не кастуют** и опираются на эти типы. Загрузчик, который даёт только `VARCHAR` (dlt `dtype=str`), обязан привести типы к тем же — это часть контракта |
 | NULL / пустая строка | пустое поле CSV → `NULL` (не `''`); `NULL` в датах доставки означает «событие ещё не произошло», а не «неизвестно» |
 | Кодировка | UTF-8; `product_category_name_translation.csv` содержит BOM — при загрузке использовать `utf-8-sig` |
 | Служебные колонки загрузчика | `_dlt_*` и подобные в `sources.yml` не заносятся и контрактом не являются |
