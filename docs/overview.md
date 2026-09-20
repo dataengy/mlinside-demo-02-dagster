@@ -1,7 +1,9 @@
 # mlinside-demo-02-dagster — описание проекта
 
-> Статус: описание целевого состояния. Код пишется по шагам из [`.claude/PLAN.md`](../.claude/PLAN.md);
-> постановка — [`.claude/PROMPT.md`](../.claude/PROMPT.md). Раздел 6 — схема обучения/инференса; п. 1 и 5 из §6.7 внесены в план (лейн L-H).
+> Статус: описание целевого состояния (ревизия v3, 2026-09-20). Шаги — [`.claude/TODO.md`](../.claude/TODO.md),
+> решения — [`decisions.md`](decisions.md), сценарий показа — [`DEMO.md`](../DEMO.md). Раздел 6 — **appendix**:
+> как обучение/инференс устроены в проде; в код MVP из него входит только минимальный batch inference (§7.3
+> ревизии). Прежний план и постановка — архив [`.claude/.archive/`](../.claude/.archive/), не требования.
 
 ## 1. Что это
 
@@ -23,37 +25,42 @@
 |---|---|
 | Задача | бинарная классификация: «доставленный заказ опоздает» (`is_late_delivery`) |
 | Баланс | 6.8 % положительных (среди 96 476 доставленных заказов) |
-| Витрина | dbt-модель `mart_order_features`: одна строка на заказ, 22 признака, **известные на момент покупки** |
-| Модели | `HistGradientBoosting` (по умолчанию) или `LogisticRegression` — выбор в `TrainConfig` |
-| Метрики | ROC AUC ≈ 0.78 (сплит по хешу) / ≈ 0.71 (сплит по времени), PR AUC; accuracy не показываем |
-| Гейт | блокирующий `@asset_check` `quality_gate` на `model_evaluation`, порог задан в `settings` |
+| Формулировка | «На основании информации, доступной при оформлении заказа, оценить риск, что заказ будет доставлен позднее обещанного срока» |
+| Витрина | dbt-модель `mart_order_features`: одна строка на заказ, только признаки, **известные в момент оформления** ([контракт](contracts/features.md)) |
+| Модель | одна детерминированная: `LogisticRegression` в sklearn `Pipeline` с preprocessing внутри, 8–10 признаков; ML — чёрный ящик (ADR-06) |
+| Метрики | ROC AUC на holdout — единственный blocking gate; остальное логируется в MLflow, чеками не становится |
+| Гейт | блокирующий `@asset_check` `quality_gate` на `model_evaluation`; порог измеряется на shipped-snapshot, в docs заранее не обещается |
+| Утечка | `delivery_delay_days`, `order_delivered_*`, `review_*`, `order_status` — известны только после доставки → не входят в контракт; единственная «ML-остановка» в кадре |
 
-Подробности и риски (дрейф доли просрочек по месяцам от 0.7 % до 19 %, вклад `purchase_month`) —
-[`.claude/drafts/ml/REPORT.md`](../.claude/drafts/ml/REPORT.md).
+Разведка по данным (дрейф доли просрочек по месяцам от 0.7 % до 19 %, вклад `purchase_month`) —
+[`.claude/drafts/ml/REPORT.md`](../.claude/drafts/ml/REPORT.md) (архивные измерения на полном датасете).
 
 ## 3. Граф ассетов
 
-Чёрное — план этапов 1–2. Пунктир — предложение из раздела 6.
+Сплошное — код MVP. Пунктир — appendix (раздел 6), в коде MVP отсутствует.
 
 ```mermaid
 flowchart LR
-  subgraph ingest["Ingest (демо 1)"]
-    K[Kaggle / dlt<br/>или dbt seed] --> R["raw/* (8 таблиц)"]
+  subgraph raw["Предпосылка: raw уже в хранилище"]
+    SEED["dbt seed<br/>shipped snapshot"] --> R["raw/* (8 таблиц)"]
   end
-  subgraph dbt["dbt (демо 2)"]
+  subgraph dbt["dbt как ассеты (фокус №1)"]
     R --> S[staging] --> I[intermediate] --> M[mart_order_features]
-    S -. dbt test .-> DQ{{asset checks<br/>+ freshness}}
+    M --- DQ{{dbt tests =<br/>asset checks}}
+    M --- FR{{asset freshness}}
   end
-  subgraph train["Обучение (демо 3)"]
-    M --> TD[training_dataset] --> MD[model] --> EV[model_evaluation]
-    EV --> G{{quality_gate<br/>blocking}} --> REG["model_registered<br/>MLflow @champion"]
+  subgraph train["Обучение (контур A)"]
+    M --> TD["training_dataset<br/>snapshot train/holdout"] --> MD[model] --> EV[model_evaluation]
+    EV --> G{{quality_gate<br/>blocking}} --> REG["model_registered<br/>версия без алиаса"]
+    REG --> PR["promote_job<br/>alias @champion"]
   end
-  subgraph infer["Инференс и мониторинг (предложение)"]
-    M -.-> P["predictions<br/>daily partitions"]
-    REG -. "alias @champion" .-> P
+  subgraph infer["Batch inference (контур B, минимум)"]
+    M --> SI["scoring_input<br/>target ещё неизвестен"] --> P["predictions<br/>model_version, batch_id"]
+    PR -. "models:/…@champion" .-> P
+  end
+  subgraph appendix["Appendix — раздел 6"]
     P -.-> PM[prediction_monitoring]
-    M -.-> PERF["model_performance<br/>(поздние метки)"]
-    P -.-> PERF
+    P -.-> PERF["model_performance<br/>(поздние метки)"]
     PERF -. деградация .-> TD
   end
 ```
@@ -70,21 +77,46 @@ flowchart LR
 | Executor | `in_process` (DuckDB допускает одного писателя, D7) | `multiprocess` / `k8s`, тяжёлое обучение — через Dagster Pipes |
 | MLflow | `sqlite:///mlflow.db` + `./mlruns` | Postgres backend + S3/MinIO для артефактов |
 | Observability | лог `dg dev` | Prometheus + Loki + Grafana; алерты в Telegram (демо 4) |
-| Деплой | `make dev` | Docker Compose на VM или Dagster+ (Hybrid/Serverless), `docs/deploy/` |
+| Деплой | `just dev` | Docker Compose на VM или Dagster+ (Hybrid/Serverless), `docs/deploy/` (после MVP) |
 
-## 5. Четыре демо
+### 4.1. Dev vs prod через ML-процесс, а не через загрузчики
 
-| # | Что показываем | Главный результат |
+В кадре dev/prod объясняется по осям ML-процесса (§11 ревизии), инфраструктурная таблица выше — справочно:
+
+| Ось | dev (демо) | prod |
 |---|---|---|
-| 1 | `create-dagster` → `dg dev` → ingest: v1 `dbt seed`, v2 dlt из Kaggle с сэмплированием по `order_id` | raw-таблицы в DuckDB |
-| 2 | `DbtProjectComponent`; раздельные `transform_job` и `dq_job`; source freshness | в UI видно, что упало: модель или проверка качества |
-| 3 | витрина → обучение → оценка → гейт → реестр MLflow | один Materialize проводит данные от Kaggle до `@champion` |
-| 4 | GitHub Actions, Docker Compose, Grafana-стек, алерт в Telegram | ломаем check и получаем алерт |
+| Изоляция данных и реестра | небольшой snapshot, отдельный MLflow-эксперимент и реестр в `data/` | утверждённые данные, общий реестр, отдельные ресурсы |
+| Объём и окно обучения | весь snapshot | окно партиций (например, скользящие 12 мес.) |
+| Проверка кандидата и promotion | gate по порогу, promote вручную в кадре | gate + сравнение с текущим `champion`, promote отдельным шагом/approve |
+| Расписания train и scoring | запуск руками | независимые: train — неделя/месяц, scoring — час/день |
+| Состояние Dagster | SQLite в `DAGSTER_HOME` | Postgres, отдельные webserver/daemon |
+| Executor | `in_process` (один писатель DuckDB) | `multiprocess`/k8s, тяжёлое обучение через Pipes |
 
-Инструменты курса вокруг проекта (из плана курса): Feast, DVC, FastAPI-serving, Kafka, Evidently. В этом демо
-их нет намеренно — лекция про оркестрацию. Раздел 6 показывает, где они подключаются.
+Реплика: «В разработке проверяем весь путь на небольшом snapshot и пишем в отдельный эксперимент. В проде
+используем утверждённые данные и ресурсы, проверяем кандидата и отдельно допускаем его к применению. Инференс
+использует опубликованную версию — обучение при этом не запускается». Оговорка: dev-прогон отвечает на вопрос
+«пайплайн работает», а не «модель хорошая».
 
-## 6. Периодическое обучение и постоянный инференс: как это обычно устроено
+## 5. Сюжет демо (≤30 минут)
+
+Ingestion — предпосылка, не блок: «данные уже доставлены DE-командой или доступны в warehouse; для автономности
+здесь локальный DuckDB со snapshot Olist» (≤30 с). Главный тезис: **Dagster соединяет dbt-модели и ML-артефакты
+в один asset graph: видно, из чего получена модель, что проверено и какой версией рассчитаны предсказания.**
+
+| Блок | Мин | Что показываем | Главный результат |
+|---|---|---|---|
+| Старт | 3 | `just --list`, `dg dev`, подключение dbt-проекта компонентом, роль `manifest.json` | пустой проект → граф dbt в UI |
+| dbt | 10 | модели = ассеты, `ref()`/`source()` = рёбра, descriptions/owners в UI; тесты = checks; зелёная модель + красный check; blocking останавливает ML; asset freshness ≠ data freshness | видно, что упало: модель или контракт |
+| Feature contract → обучение → gate → registry | 7 | mart / training_dataset / scoring_input; утечка как единственная ML-остановка; train → evaluation → blocking gate → версия без алиаса | версия в MLflow, gate падает по поднятому порогу |
+| Promotion → batch inference | 4 | `promote_job` → `@champion`; `scoring_input → predictions` с `model_version`; failed gate не трогает champion | predictions с версией модели |
+| Выборочный пересчёт | 3 | правка SQL витрины → статус ассета → материализация только выбранной ветки | raw и staging не запускались |
+| Dev-prod, CI/CD, observability | 3 | оси §4.1; зелёный Actions и что он проверяет; Runs/Checks в UI; алерт в Telegram | ломаем check — приходит алерт |
+
+Подробно, с состоянием «до», действиями, fallback — [`DEMO-plan.md`](../DEMO-plan.md); слайды докладчика с
+репликами (в т.ч. короткие сравнения с Airflow 3 + Cosmos) — [`DEMO.md`](../DEMO.md). Инструменты курса вокруг проекта (Feast, DVC, FastAPI-serving, Kafka, Evidently) в демо
+намеренно отсутствуют — лекция про оркестрацию; раздел 6 показывает, где они подключаются.
+
+## 6. Appendix. Периодическое обучение и постоянный инференс: как это обычно устроено
 
 ### 6.1. Три контура с разной частотой
 
@@ -187,5 +219,7 @@ dbt-часть работает по своему расписанию (или `
 5. `SIM_TODAY` для имитации потока на историческом датасете.
 6. Для prod — dbt-таргет `ch` и `ClickHouseResource` с тем же интерфейсом, что у `DuckDBResource`.
 
-Пункты 1 и 5 внесены в план как лейн **L-H** ([`.claude/PLAN.md` §6](../.claude/PLAN.md)): слайд 37 уже рисует
-`predictions → monitoring`, а в демо этого узла не было. Остальные пункты — после лекции.
+Статус после ревизии v3: в MVP из этого списка — только **непартиционированный** `predictions` без `SIM_TODAY`
+и без мониторинга (ADR-13). Партиции, `SIM_TODAY`, `prediction_monitoring`, поздние метки, challenger/champion,
+time-split, ClickHouse — appendix, кандидаты после лекции (TODO P4–P6). Слайд 37 рисует `predictions →
+monitoring`; узел `predictions` в демо теперь есть, `monitoring` — нет намеренно.

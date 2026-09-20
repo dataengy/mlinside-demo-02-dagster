@@ -1,0 +1,14 @@
+# dev-инстанс Dagster (`just dev` копирует этот файл в DAGSTER_HOME при первом запуске).
+# Хранилище — SQLite в DAGSTER_HOME (ADR-12: Postgres только для расширенного демо).
+
+telemetry:
+  enabled: false
+
+# Демон freshness обязателен, иначе статус FreshnessPolicy всегда UNKNOWN (ADR-17).
+freshness:
+  enabled: true
+
+python_logs:
+  managed_python_loggers:
+    - olist_ml
+  python_log_level: INFO

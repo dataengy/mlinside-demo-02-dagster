@@ -1,0 +1,54 @@
+version: 2
+
+# Отличие от канона (ADR-04): описание и контракт витрины признаков (docs/contracts/features.md).
+# dbt-тесты здесь становятся asset checks в Dagster; severity error → blocking (ADR-04a).
+
+models:
+  - name: mart_order_features
+    description: >
+      Витрина признаков для ML-задачи «заказ будет доставлен позднее обещанного срока».
+      Одна строка на заказ; только признаки, известные в момент оформления заказа (без утечек —
+      см. docs/contracts/features.md). Таргет is_late_delivery: 0/1 у доставленных, NULL у остальных.
+    meta:
+      owner: data-engineering
+      dagster:
+        owners: ["team:data-engineering"]
+    columns:
+      - name: order_id
+        description: Ключ строки и основа детерминированного сплита train/holdout.
+        tests: [not_null, unique]
+      - name: is_late_delivery
+        description: Таргет — доставлен позже обещанного срока (0/1); NULL, пока заказ не доставлен.
+        tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+      - name: items_cnt
+        description: Число позиций в заказе.
+        tests: [not_null]
+      - name: order_value
+        description: Стоимость заказа (товары + доставка).
+        tests: [not_null]
+      - name: freight_share
+        description: Доля доставки в стоимости заказа, 0..1 — контракт витрины.
+        tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 1, inclusive: true}
+      - name: main_payment_type
+        description: Основной способ оплаты; 'unknown', если платежа нет.
+        tests: [not_null]
+      - name: customer_state
+        description: Штат покупателя (UF).
+        tests: [not_null]
+      - name: estimated_delivery_span_days
+        description: Обещанный срок доставки в днях от оформления — известен при оформлении.
+        tests: [not_null]
+      - name: purchase_month
+        description: Месяц оформления (1–12).
+        tests:
+          - dbt_utils.accepted_range: {min_value: 1, max_value: 12, inclusive: true}
+      - name: main_product_category
+        description: Доминирующая категория заказа (по сумме цен позиций); 'unknown', если нет.
+        tests: [not_null]
+      - name: order_purchase_timestamp
+        description: Момент оформления — не признак, для окон и метаданных.
+        tests: [not_null]
