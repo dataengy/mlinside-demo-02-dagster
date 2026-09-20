@@ -1,0 +1,34 @@
+version: 2
+
+seeds:
+  - name: product_category_name_translation
+    description: >
+      Перевод названий категорий с португальского на английский, 71 строка.
+      Подключён как seed, а не как source: набор статический и живёт вместе
+      с кодом, а не приезжает из загрузки. Заодно это повод показать `dbt seed`.
+    columns:
+      - name: product_category_name
+        description: Категория как она записана в products (португальский).
+        tests: [not_null, unique]
+      - name: product_category_name_english
+        description: Английское название, используется в витринах.
+        tests: [not_null, unique]
+
+  - name: seed_state_region
+    description: >
+      Справочник штатов Бразилии: код UF, название и макрорегион.
+      В датасете есть только двухбуквенный код — регион позволяет
+      группировать витрины крупнее, чем по 27 штатам.
+    columns:
+      - name: state_code
+        description: Двухбуквенный код штата (UF), как в customer_state и seller_state.
+        tests: [not_null, unique]
+      - name: state_name
+        description: Название штата.
+        tests: [not_null]
+      - name: region
+        description: Макрорегион Бразилии, один из пяти.
+        tests:
+          - not_null
+          - accepted_values:
+              values: [Norte, Nordeste, Centro-Oeste, Sudeste, Sul]

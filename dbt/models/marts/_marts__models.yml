@@ -1,0 +1,198 @@
+version: 2
+
+models:
+  - name: mart_daily_state_metrics
+    description: >
+      Дневные метрики по штатам: объём, средний чек, P95, доля крупных заказов
+      и качество доставки. Гранулярность — (дата покупки, штат).
+    columns:
+      - name: order_purchase_date
+        description: Дата оформления заказов.
+        tests: [not_null]
+      - name: customer_state
+        description: Штат покупателя (UF).
+        tests: [not_null]
+      - name: orders_cnt
+        description: Число заказов за день в штате.
+        tests: [not_null]
+      - name: total_revenue
+        description: Выручка (товары + доставка).
+        tests: [not_null]
+      - name: p95_order_value
+        description: 95-й перцентиль стоимости заказа (макрос percentile).
+      - name: large_order_share
+        description: Доля заказов дороже var('large_order_threshold'), %.
+        tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 100}
+      - name: late_delivery_rate
+        description: >
+          Доля просроченных среди ДОСТАВЛЕННЫХ заказов, %. NULL, если
+          в этот день в этом штате не доставили ни одного заказа.
+        tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 100}
+      - name: bad_review_rate
+        description: Доля оценок ≤ 2 среди заказов С отзывом, %.
+        tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 100}
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [order_purchase_date, customer_state]
+
+  - name: mart_delivery_quality_by_category
+    description: >
+      Качество исполнения по категориям товаров: где чаще опаздывают
+      и получают плохие оценки. Считается по позициям, не по заказам.
+    columns:
+      - name: product_category_name_english
+        description: Категория на английском; 'unknown' для товаров без категории.
+        tests: [not_null, unique]
+      - name: items_cnt
+        description: Число проданных позиций.
+        tests: [not_null]
+      - name: orders_cnt
+        description: Число различных заказов, содержавших категорию.
+        tests: [not_null]
+      - name: avg_freight_share
+        description: Средняя доля доставки в стоимости позиции, 0–1.
+        tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 1}
+      - name: late_delivery_rate
+        description: Доля просрочек среди доставленных, %.
+        tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 100}
+      - name: bad_review_rate
+        description: Доля плохих отзывов, %.
+        tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 100}
+      - name: avg_review_score
+        description: Средняя оценка, 1–5.
+        tests:
+          - dbt_utils.accepted_range: {min_value: 1, max_value: 5}
+
+  - name: mart_delivery_quality_by_state
+    description: >
+      Географический разрез: сроки, просрочки, отзывы и среднее расстояние
+      до продавца по каждому штату. 27 строк.
+    columns:
+      - name: customer_state
+        tests: [not_null, unique]
+      - name: orders_cnt
+        tests: [not_null]
+      - name: unique_customers
+        description: Число различных людей (customer_unique_id).
+        tests: [not_null]
+      - name: late_delivery_rate
+        tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 100}
+      - name: p95_delivery_days
+        description: 95-й перцентиль срока доставки в днях.
+      - name: avg_distance_km
+        description: >
+          Среднее расстояние покупатель↔продавец, км (макрос haversine_km).
+          Ожидаемо растёт для северных штатов.
+        tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 6000}
+      - name: freight_share_pct
+        description: Доля доставки в выручке штата, %.
+        tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 100}
+
+  - name: mart_customer_value_profile
+    description: >
+      Профиль клиента с сегментацией по ценности. Гранулярность —
+      customer_unique_id (96 096 строк), НЕ customer_id.
+    columns:
+      - name: customer_unique_id
+        description: Идентификатор человека. Первичный ключ витрины.
+        tests: [not_null, unique]
+      - name: orders_cnt
+        description: Сколько заказов сделал клиент.
+        tests: [not_null]
+      - name: total_spend
+        description: Суммарные траты.
+        tests: [not_null]
+      - name: recency_days
+        description: >
+          Дней от последнего заказа клиента до последней даты в датасете.
+          Считается от данных, а не от текущей даты — иначе витрина была бы
+          невоспроизводимой.
+        tests:
+          - not_null
+          - dbt_utils.accepted_range: {min_value: 0}
+      - name: value_segment
+        description: Сегмент по сумме трат; границы — переменные проекта.
+        tests:
+          - not_null
+          - accepted_values: {values: [HIGH, MEDIUM, LOW]}
+      - name: is_repeat_customer
+        description: 1, если заказов больше одного. Таких ≈ 3 %.
+        tests:
+          - accepted_values: {values: [0, 1], quote: false}
+
+  - name: mart_hourly_order_pattern
+    description: >
+      Временные паттерны: объём и качество по дням недели и часам.
+      Максимум 168 строк (7 × 24).
+    columns:
+      - name: order_dow
+        description: День недели по ISO, понедельник = 1.
+        tests:
+          - not_null
+          - dbt_utils.accepted_range: {min_value: 1, max_value: 7}
+      - name: order_hour
+        description: Час оформления, 0–23.
+        tests:
+          - not_null
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 23}
+      - name: dow_name
+        description: Название дня недели по-русски.
+        tests: [not_null]
+      - name: is_weekend
+        description: 1 для субботы и воскресенья.
+        tests:
+          - accepted_values: {values: [0, 1], quote: false}
+      - name: late_delivery_rate
+        tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 100}
+      - name: cancel_rate
+        description: Доля отменённых заказов, %.
+        tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 100}
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [order_dow, order_hour]
+
+  - name: mart_seller_analytics
+    description: >
+      Аналитика по продавцам: оборот, ассортимент, география, качество
+      исполнения и флаг проблемного продавца. 3 095 строк.
+    columns:
+      - name: seller_id
+        tests: [not_null, unique]
+      - name: items_sold
+        tests: [not_null]
+      - name: orders_cnt
+        tests: [not_null]
+      - name: total_revenue
+        tests: [not_null]
+      - name: unique_categories
+        description: В скольких категориях продаёт.
+        tests: [not_null]
+      - name: categories
+        description: Список категорий одной строкой (макрос string_agg_distinct).
+      - name: states_served
+        description: В сколько штатов отгружает.
+        tests: [not_null]
+      - name: late_delivery_rate
+        tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 100}
+      - name: avg_review_score
+        tests:
+          - dbt_utils.accepted_range: {min_value: 1, max_value: 5}
+      - name: is_underperforming
+        description: >
+          1, если заказов ≥ 10 И доля просрочек выше
+          var('seller_late_rate_threshold'). Порог по числу заказов нужен,
+          чтобы продавец с одним опоздавшим заказом не возглавил антирейтинг.
+        tests:
+          - accepted_values: {values: [0, 1], quote: false}
