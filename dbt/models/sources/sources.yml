@@ -1,0 +1,170 @@
+version: 2
+
+# Отличие от канона (ADR-04, ADR-05): источники читаются из схемы raw (snapshot через dbt seed, ADR-03),
+# а не из CSV через external_location; у каждой таблицы meta.dagster.asset_key = [raw, <table>] —
+# тот же ключ, что у seed-ассета, поэтому граф Dagster связный. Колонки, тесты и описания — как в каноне.
+# Контракт raw — docs/contracts/raw.md.
+
+sources:
+  - name: olist_raw
+    description: >
+      Сырые таблицы датасета Olist Brazilian E-Commerce, как они приехали из CSV.
+      Ничего не почищено намеренно: дубли отзывов, пустые даты доставки и
+      разбухшая geolocation разбираются в слое staging.
+    database: "{{ 'olist' if target.type == 'duckdb' else env_var('CH_RAW_DB', 'olist_raw') }}"
+    schema: "{{ 'raw' if target.type == 'duckdb' else env_var('CH_RAW_DB', 'olist_raw') }}"
+
+    tables:
+      - name: orders
+        description: Заказ. Одна строка на заказ.
+        meta:
+          dagster:
+            asset_key: [raw, orders]
+        loaded_at_field: order_purchase_timestamp
+        freshness:
+          warn_after: {count: 3650, period: day}
+          error_after: {count: 7300, period: day}
+        columns:
+          - name: order_id
+            description: Первичный ключ заказа.
+            tests: [not_null, unique]
+          - name: customer_id
+            description: >
+              Ссылка на customers. ВНИМАНИЕ: значение уникально для каждого
+              заказа и НЕ идентифицирует человека — для этого есть
+              customer_unique_id.
+            tests: [not_null]
+          - name: order_status
+            description: Статус заказа на момент выгрузки.
+            tests:
+              - accepted_values:
+                  values: [delivered, shipped, canceled, unavailable, invoiced,
+                           processing, created, approved]
+          - name: order_purchase_timestamp
+            description: Момент оформления заказа. Заполнен всегда.
+            tests: [not_null]
+          - name: order_delivered_customer_date
+            description: >
+              Фактическая доставка покупателю. Пусто у ~3 % заказов,
+              в том числе у части со статусом delivered.
+          - name: order_estimated_delivery_date
+            description: Обещанная дата доставки; известна в момент оформления.
+
+      - name: order_items
+        description: Позиция заказа — заказы разворачиваются в позиции.
+        meta:
+          dagster:
+            asset_key: [raw, order_items]
+        columns:
+          - name: order_id
+            tests: [not_null]
+          - name: order_item_id
+            description: Порядковый номер позиции внутри заказа, начиная с 1.
+            tests: [not_null]
+          - name: product_id
+            tests: [not_null]
+          - name: seller_id
+            tests: [not_null]
+          - name: price
+            description: Цена позиции без доставки, в бразильских реалах.
+            tests: [not_null]
+          - name: freight_value
+            description: Стоимость доставки, отнесённая на позицию.
+        tests:
+          - dbt_utils.unique_combination_of_columns:
+              combination_of_columns: [order_id, order_item_id]
+
+      - name: order_payments
+        description: Платежи по заказу. Один заказ можно оплатить несколькими способами.
+        meta:
+          dagster:
+            asset_key: [raw, order_payments]
+        columns:
+          - name: order_id
+            tests: [not_null]
+          - name: payment_type
+            description: Способ оплаты. Значение not_defined встречается редко.
+            tests:
+              - accepted_values:
+                  values: [credit_card, boleto, voucher, debit_card, not_defined]
+          - name: payment_value
+            tests: [not_null]
+        tests:
+          - dbt_utils.unique_combination_of_columns:
+              combination_of_columns: [order_id, payment_sequential]
+
+      - name: order_reviews
+        description: >
+          Отзывы. Ключа нет: review_id дублируется, у части заказов
+          отзывов больше одного. Дедупликация — в stg_order_reviews.
+        meta:
+          dagster:
+            asset_key: [raw, order_reviews]
+        columns:
+          - name: review_id
+            description: НЕ уникален. Тест unique здесь намеренно отсутствует.
+            tests: [not_null]
+          - name: order_id
+            tests: [not_null]
+          - name: review_score
+            description: Оценка от 1 до 5.
+            tests:
+              - not_null
+              - accepted_values:
+                  values: [1, 2, 3, 4, 5]
+                  quote: false
+
+      - name: customers
+        description: Покупатель заказа. Строка на заказ; человек — customer_unique_id.
+        meta:
+          dagster:
+            asset_key: [raw, customers]
+        columns:
+          - name: customer_id
+            description: Ключ строки. Уникален для каждого заказа.
+            tests: [not_null, unique]
+          - name: customer_unique_id
+            description: Идентификатор человека.
+            tests: [not_null]
+          - name: customer_state
+            description: Штат покупателя, двухбуквенный код (UF).
+            tests: [not_null]
+
+      - name: sellers
+        description: Продавцы маркетплейса.
+        meta:
+          dagster:
+            asset_key: [raw, sellers]
+        columns:
+          - name: seller_id
+            tests: [not_null, unique]
+          - name: seller_state
+            tests: [not_null]
+
+      - name: products
+        description: Товары. У части не заполнена категория.
+        meta:
+          dagster:
+            asset_key: [raw, products]
+        columns:
+          - name: product_id
+            tests: [not_null, unique]
+          - name: product_category_name
+            description: >
+              Категория на португальском. Пусто у части товаров — в витринах
+              такие попадают в 'unknown', а не выбрасываются.
+
+      - name: geolocation
+        description: >
+          Координаты по zip-префиксам: много точек на префикс.
+          Присоединять как есть нельзя — stg_geolocation схлопывает их в центроид.
+        meta:
+          dagster:
+            asset_key: [raw, geolocation]
+        columns:
+          - name: geolocation_zip_code_prefix
+            tests: [not_null]
+          - name: geolocation_lat
+            tests: [not_null]
+          - name: geolocation_lng
+            tests: [not_null]
