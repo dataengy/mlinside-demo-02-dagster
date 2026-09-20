@@ -13,15 +13,15 @@ dagster-dbt 0.29.23, mlflow 3.15) и только потом попадает в
 
 ## MVP
 
-- [ ] M0 Scaffold `create-dagster project olist_ml` (⚠ проверить команду scaffold и `defs.yaml` компонента), `settings.py` + `.env.example`, `Justfile` из черновика Makefile, `dagster.yaml` (`freshness.enabled`), smoke `dg check defs` — ADR-02 ADR-09 ADR-15 #scaffold #mvp
-- [ ] M1 dbt-копия канона + shipped snapshot: `sync_dbt_from_canonical.sh`, `profiles.yml`, макросы, `sources.yml` с `meta.dagster.asset_key`, seeds `raw/*` (~5 000 заказов, git-lfs), `defs/ingest/defs.yaml` (seeds → `raw/*`), `just demo-prepare`, `docs/contracts/raw.md` + smoke-тест контракта — ADR-03 ADR-05 ADR-14 #dbt #ingest #mvp
-- [ ] M2 dbt как ассеты и checks: `defs/dbt/defs.yaml` (`select +mart_order_features`, owners/tags), `mart_order_features.sql` + yml, `feature_mart_job` / `dq_job` раздельно, ⚠ проверить blocking провала dbt-теста для ML-ветки, негативный e2e «сломанный контракт → check failed → ML не выполнена» — ADR-04 ADR-05 #dbt #mvp
-- [ ] M3 ML контур A: `docs/contracts/features.md`, `training_dataset` (snapshot train/holdout), `model` (LogReg Pipeline, 8–10 признаков), `model_evaluation`, `quality_gate` (порог измерить по 5 сидам), `model_registered` без алиаса, `MlflowResource`, `train_job` — ADR-06 ADR-07 ADR-14 #ml #mvp
-- [ ] M4 Promotion и batch inference: `promote_job` (алиас `champion`), baseline-версия в `demo-prepare`, `scoring_input` → `predictions` (batch_id, model_version, идемпотентно, понятный fail без champion), `score_job` — ADR-07 ADR-13 #ml #mvp
-- [ ] M5 Выборочный пересчёт и freshness: ⚠ проверить статусы UI после правки SQL витрины (default `code_version`), `FreshnessPolicy.time_window` на `mart_order_features`, заготовленные патчи для DEMO (`demo-break`/`demo-fix`), очистка `clean raw|derived|all` + тесты идемпотентности — ADR-10 ADR-17 #dagster #mvp
-- [ ] M6 CI GitHub Actions: `ci.yml` = `just install / check / test`, e2e отдельным job, без сети и секретов — ADR-11 #ci #mvp
-- [ ] M7 Алерт: `run_failure_sensor` → Telegram (`httpx`, dry-run, unit-тест на мок), проверка живого сообщения — ADR-18 #observability #mvp
-- [ ] M8 Финал: `DEMO.md` прогнан по таймингу ≤30 мин, `docs/runbook.md` сверен с реальными командами, `just test-all` зелёный, отчёт в `docs/progress.md` #docs #tests #mvp
+- [ ] M0 Scaffold `create-dagster project olist_ml` (⚠ проверить команду scaffold и `defs.yaml` компонента), `settings.py` + `.env.example`, `Justfile` из черновика Makefile, `dagster.yaml` (`freshness.enabled`), smoke `dg check defs` — ADR-02 ADR-09 ADR-15 #scaffold #mvp (#2)
+- [ ] M1 dbt-копия канона + shipped snapshot: `sync_dbt_from_canonical.sh`, `profiles.yml`, макросы, `sources.yml` с `meta.dagster.asset_key`, seeds `raw/*` (~5 000 заказов, git-lfs), `defs/ingest/defs.yaml` (seeds → `raw/*`), `just demo-prepare`, `docs/contracts/raw.md` + smoke-тест контракта — ADR-03 ADR-05 ADR-14 #dbt #ingest #mvp (#3)
+- [ ] M2 dbt как ассеты и checks: `defs/dbt/defs.yaml` (`select +mart_order_features`, owners/tags), `mart_order_features.sql` + yml, `feature_mart_job` / `dq_job` раздельно, ⚠ проверить blocking провала dbt-теста для ML-ветки, негативный e2e «сломанный контракт → check failed → ML не выполнена» — ADR-04 ADR-05 #dbt #mvp (#4)
+- [ ] M3 ML контур A: `docs/contracts/features.md`, `training_dataset` (snapshot train/holdout), `model` (LogReg Pipeline, 8–10 признаков), `model_evaluation`, `quality_gate` (порог измерить по 5 сидам), `model_registered` без алиаса, `MlflowResource`, `train_job` — ADR-06 ADR-07 ADR-14 #ml #mvp (#5)
+- [ ] M4 Promotion и batch inference: `promote_job` (алиас `champion`), baseline-версия в `demo-prepare`, `scoring_input` → `predictions` (batch_id, model_version, идемпотентно, понятный fail без champion), `score_job` — ADR-07 ADR-13 #ml #mvp (#6)
+- [ ] M5 Выборочный пересчёт и freshness: ⚠ проверить статусы UI после правки SQL витрины (default `code_version`), `FreshnessPolicy.time_window` на `mart_order_features`, заготовленные патчи для DEMO (`demo-break`/`demo-fix`), очистка `clean raw|derived|all` + тесты идемпотентности — ADR-10 ADR-17 #dagster #mvp (#7)
+- [ ] M6 CI GitHub Actions: `ci.yml` = `just install / check / test`, e2e отдельным job, без сети и секретов — ADR-11 #ci #mvp (#8)
+- [ ] M7 Алерт: `run_failure_sensor` → Telegram (`httpx`, dry-run, unit-тест на мок), проверка живого сообщения — ADR-18 #observability #mvp (#9)
+- [ ] M8 Финал: `DEMO.md` прогнан по таймингу ≤30 мин, `docs/runbook.md` сверен с реальными командами, `just test-all` зелёный, отчёт в `docs/progress.md` #docs #tests #mvp (#10)
 
 ## Appendix / после лекции
 

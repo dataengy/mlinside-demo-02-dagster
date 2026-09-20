@@ -12,17 +12,24 @@
 3. Первый MVP-план (dlt из Kaggle, 4 демо) — `333f30c`, затем пересмотрен ревизией v3; `PLAN.md`/`PROMPT.md`
    перенесены в `.claude/.archive/` (`a3641b5`).
 
+Проход 2 (2026-09-20, вечер): порт 3000; `DEMO.md` → слайды (S0–S22), прежний план → `DEMO-plan.md`;
+`docs/theory/training-in-demo.md` + кандидат скилла `demo-training-selfcheck`
+(`~/.ai/skills/_skills_candidates_by_prj/mlinside-demo-02-dagster/`); ADR-04a и ADR-07a — варианты + SWOT +
+quadrant, решения открыты. Push `feat/mvp-plan-v3`, draft PR
+[#1](https://github.com/dataengy/mlinside-demo-02-dagster/pull/1), issues
+[#2–#10](https://github.com/dataengy/mlinside-demo-02-dagster/issues) (M0–M8).
+
 ## Незавершённое (последние 2 рабочих дня)
 
-- Push `feat/mvp-plan-v3` и PR — после подтверждения пользователя.
-- Синк `.claude/TODO.md` → GitHub issues (`gh auth` keyring-таймаут — проверить вне sandbox).
+- Решения ADR-04a (гейт ML по dbt-check) и ADR-07a (baseline к scoring) — за автором.
+- Промоут кандидата скилла: `/create-skill demo-training-selfcheck`.
 - Кода нет: шаг M0 (scaffold + settings + Justfile + smoke) — первый шаг реализации, по правилу
   «минимальное изменение → GUI → тесты → отчёт + 1–3 вопроса».
-- Проверки на установленных версиях (см. runbook §1) — по мере M0–M5.
+- Проверки на установленных версиях (см. runbook §1, пометки «⚠ проверить» в DEMO) — по мере M0–M5.
 
 ## Предлагаемые следующие шаги
 
-1. Ревью docs в PR → push → merge в `main`.
+1. Ревью PR #1 → merge в `main`; выбор по ADR-04a / ADR-07a.
 2. M0: scaffold `create-dagster` во временной папке для проверки команды, затем в репо; `Justfile` из
    черновика Makefile; `settings.py`; `dg check defs` зелёный; показать пустой UI.
 3. M1: копия dbt + snapshot seeds (git-lfs) + `demo-prepare`; контракт raw smoke-тестом.
