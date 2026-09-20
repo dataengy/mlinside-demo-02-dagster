@@ -29,7 +29,8 @@ just dev                     # Dagster UI: http://127.0.0.1:3000
 just --list                  # все рецепты
 ```
 
-Полный сценарий показа (≤30 мин, с состоянием «до», командами, что видно в UI и fallback) — [`DEMO.md`](DEMO.md).
+Слайды докладчика (≤30 мин, тайминг, главный поинт, текст, команды, материалы) — [`DEMO.md`](DEMO.md);
+план блоков с состоянием «до», действиями, UI и fallback — [`DEMO-plan.md`](DEMO-plan.md).
 
 ## Статус
 
@@ -40,7 +41,9 @@ just --list                  # все рецепты
 
 | Документ | Что внутри |
 |---|---|
-| [`DEMO.md`](DEMO.md) | сценарий демо по блокам: старт / dbt / обучение и gate / promotion и inference / выборочный пересчёт / dev-prod, CI, observability |
+| [`DEMO.md`](DEMO.md) | «виртуальные слайды» докладчика: ⏱ тайминг, заголовок, главный поинт, буллеты, bash + `just`, материалы |
+| [`DEMO-plan.md`](DEMO-plan.md) | план блоков: старт / dbt / обучение и gate / promotion и inference / выборочный пересчёт / dev-prod, CI, observability — «до», действия, UI, fallback |
+| [`docs/theory/training-in-demo.md`](docs/theory/training-in-demo.md) | теория обучения в демо для DE + 10 проверочных вопросов (самопроверка — скилл `demo-training-selfcheck`) |
 | [`docs/overview.md`](docs/overview.md) | что это, ML-задача, граф ассетов, dev vs prod, appendix «как в проде» (обучение, инференс, мониторинг) |
 | [`docs/decisions.md`](docs/decisions.md) | ADR-01…ADR-18: ingestion-предпосылка, dbt как ассеты и checks, ML чёрный ящик, register ≠ promote, batch inference, Justfile, выборочный пересчёт |
 | [`docs/contracts/`](docs/contracts/) | контракты данных: [`raw.md`](docs/contracts/raw.md), [`features.md`](docs/contracts/features.md) |
