@@ -4,6 +4,14 @@
 
 ## MVP
 
+- [ ] M7b Второй сенсор — ветка `feat/m7-telegram-alert` — 2026-09-21 — `alert_on_failed_check`: курсор по зелёным
+  run'ам (`get_run_records(updated_after)` + `all_logs(ASSET_CHECK_EVALUATION)`), алерт на каждый `passed=False`; run
+  FAILURE пропускается (о нём говорит первый сенсор, дублей нет). Сцена: `just demo-break-warn` (срок доставки в часах
+  вместо дней) + warn-тест `accepted_range(estimated_delivery_span_days ≤ 180, severity: warn)` в overlay → `dq_job`
+  SUCCESS, check WARN, сообщение приходит. Тесты — на `DagsterInstance.local_temp` (настоящий SQLite): первая версия
+  с `get_event_records(after_cursor=int)` падала на run-sharded event log `dg dev` («cursor is not run-aware») и
+  ephemeral-инстанс этого не ловил. Попутно: относительные `DBT_*` из `.env` давали `dbt/dbt/target` — Justfile
+  экспортирует абсолютные, `defs/env.py` абсолютизирует при загрузке.
 - [ ] M8 Финал — ветка `feat/m7-telegram-alert` — 2026-09-21 — хронометраж демо-команд (машинное время, snapshot
   4 918 заказов, M2 MacBook): `demo-prepare` 29 с, `feature-mart` 14–17 с, `dq` 17–19 с, `train` 16 с, `promote` 10 с,
   `score` 9–10 с, `demo-recompute` 17 с, `demo-break/fix/sql-change` 2–5 с; вся последовательность S1–S18

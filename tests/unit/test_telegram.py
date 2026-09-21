@@ -25,6 +25,17 @@ def test_format_has_job_run_link_and_first_error_line() -> None:
     assert "недоступен" in format_run_failure("j", "r", None, "http://x")
 
 
+def test_format_check_failure_mentions_check_asset_severity() -> None:
+    from olist_ml.alerts.telegram import format_check_failure
+
+    text = format_check_failure(
+        "accepted_range_x", "mart_order_features", "WARN", "r1", "3 строки\nещё", "http://u"
+    )
+    assert "accepted_range_x" in text and "mart_order_features" in text and "WARN" in text
+    assert "http://u/runs/r1" in text and "3 строки" in text and "ещё" not in text
+    assert format_check_failure("c", "a", "ERROR", "r", None, "http://u").count("\n") == 1
+
+
 def test_dry_run_when_disabled_or_no_credentials() -> None:
     calls: list[httpx.Request] = []
 

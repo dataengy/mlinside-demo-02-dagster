@@ -18,6 +18,14 @@ if not _current or not Path(_current).is_absolute():
     os.environ["DUCKDB_PATH"] = str(settings.DUCKDB_PATH)
 Path(os.environ["DUCKDB_PATH"]).parent.mkdir(parents=True, exist_ok=True)
 
+# dbt CLI сам читает DBT_PROJECT_DIR / DBT_PROFILES_DIR / DBT_TARGET_PATH и относительный путь берёт от каталога
+# проекта (dbt/), а `dg dev`/`dg launch` подгружают `.env` из cwd поверх окружения — относительное
+# `DBT_TARGET_PATH=dbt/target` из `.env` даёт `dbt/dbt/target`. Отдаём dbt абсолютные пути от корня проекта.
+for _name in ("DBT_PROJECT_DIR", "DBT_PROFILES_DIR", "DBT_TARGET_PATH"):
+    _value = os.environ.get(_name, "")
+    if _value and not Path(_value).is_absolute():
+        os.environ[_name] = str(getattr(settings, _name))
+
 os.environ.setdefault("DBT_TARGET", settings.DBT_TARGET)
 os.environ.setdefault("DBT_VERSION_CHECK", "false")
 # cautious: тест попадает в dbt build, только если все его родители в выборке; с eager (default) полный build

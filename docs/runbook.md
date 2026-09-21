@@ -86,6 +86,8 @@ uv run dg dev
 | Telegram-алерт не приходит | `ALERTS_ENABLED=false` (dry-run) или пустые `TG_*` | заполнить `.env`, `just tg-test`; лог сенсора `alert_on_run_failure` (Automation) |
 | Сенсор тикает SKIPPED «empty result» без лога после упавшего run | run без `remote_job_origin` (`dg launch`) отфильтрован по code location | `monitor_all_code_locations=True` в `@run_failure_sensor` |
 | `$DAGSTER_HOME ".dagster_home" must be an absolute path` при `dg launch`/`dg dev` | в `.env` задан относительный `DAGSTER_HOME`: dagster CLI подгружает `.env` из cwd поверх окружения | убрать `DAGSTER_HOME` из `.env` (его задаёт Justfile абсолютным) |
+| Сенсор падает «cursor that is not run-aware» | `get_event_records` с числовым курсором на SQLite-инстансе (run-sharded event log) | курсор по run'ам (`get_run_records(updated_after=…)` + `all_logs`), как в `alert_on_failed_check` |
+| `dbt/dbt/target` появился, манифест не обновляется | относительный `DBT_TARGET_PATH` в `.env` берётся dbt от каталога проекта | Justfile экспортирует абсолютные `DBT_*`, `defs/env.py` абсолютизирует их при загрузке кода |
 | CI: `failed to fetch some objects from …/info/lfs` | LFS-объекты seeds не загружены на GitHub | `git lfs push --all origin` (нужен push-доступ) |
 | `just`: command not found | раннер не установлен | `brew install just` / `uv tool install rust-just` |
 

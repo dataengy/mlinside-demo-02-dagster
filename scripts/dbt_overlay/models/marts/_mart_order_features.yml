@@ -41,7 +41,14 @@ models:
         tests: [not_null]
       - name: estimated_delivery_span_days
         description: Обещанный срок доставки в днях от оформления — известен при оформлении.
-        tests: [not_null]
+        tests:
+          - not_null
+          # severity warn → non-blocking check: run зелёный, check жёлтый — сцена второго сенсора (ADR-18)
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 180
+              inclusive: true
+              config: {severity: warn}
       - name: purchase_month
         description: Месяц оформления (1–12).
         tests:

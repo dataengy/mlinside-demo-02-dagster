@@ -33,6 +33,26 @@ def format_run_failure(job_name: str, run_id: str, error: str | None, ui_url: st
     return f"❌ Dagster: run {job_name} завершился с ошибкой\nrun: {ui_url}/runs/{run_id}\n{head}"
 
 
+def format_check_failure(
+    check_name: str,
+    asset_key: str,
+    severity: str,
+    run_id: str,
+    description: str | None,
+    ui_url: str,
+) -> str:
+    """Провал asset check при зелёном run: что за check, на каком ассете, severity, где посмотреть."""
+    tail = (description or "").strip().splitlines()
+    head = tail[0][:MAX_ERROR_CHARS] if tail else ""
+    lines = [
+        f"⚠️ Dagster: check {check_name} на {asset_key} провален (severity {severity}), run зелёный",
+        f"run: {ui_url}/runs/{run_id}",
+    ]
+    if head:
+        lines.append(head)
+    return "\n".join(lines)
+
+
 def send_telegram(
     text: str,
     token: str,

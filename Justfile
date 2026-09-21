@@ -22,6 +22,11 @@ dbt_target_path := absolute_path(env("DBT_TARGET_PATH", "dbt/target"))
 export DAGSTER_HOME := absolute_path(dagster_home)
 # dbt-duckdb резолвит относительный path от cwd (= dbt/) — отдаём dbt абсолютный путь (см. defs/env.py).
 export DUCKDB_PATH := absolute_path(env("DUCKDB_PATH", "data/olist.duckdb"))
+# dbt CLI читает DBT_* из окружения и относительный путь берёт от каталога проекта (`dbt/target` → `dbt/dbt/target`);
+# экспорт из Justfile перекрывает значения `.env` (dotenv-load) абсолютными (см. defs/env.py для dg dev/launch).
+export DBT_PROJECT_DIR := dbt_dir
+export DBT_PROFILES_DIR := dbt_profiles
+export DBT_TARGET_PATH := dbt_target_path
 export MLFLOW_DISABLE_AGENT_HINT := "1"
 export DBT_SEND_ANONYMOUS_USAGE_STATS := "false"
 export DBT_VERSION_CHECK := "false"
@@ -139,6 +144,10 @@ demo-break:
 # Вернуть витрину к эталону; затем dbt-parse (после этого — `just feature-mart && just dq`)
 demo-fix:
     uv run python scripts/demo_patch.py fix && just dbt-parse
+
+# Warn-сцена (S20): срок доставки в часах → warn-check жёлтый, run зелёный → alert_on_failed_check; затем dbt-parse
+demo-break-warn:
+    uv run python scripts/demo_patch.py break-warn && just dbt-parse
 
 # Безобидная правка SQL витрины → меняется code_version (S16); затем dbt-parse
 demo-sql-change:

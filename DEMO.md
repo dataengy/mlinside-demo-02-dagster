@@ -389,12 +389,18 @@ just demo-recompute        # dg launch --assets "mart_order_features,training_da
 **Главный поинт:** статус run'ов и checks — в UI; <u>один канал алерта</u> без дополнительной инфраструктуры.
 
 - Dagster UI → Runs (статусы), Asset checks (последние результаты), Freshness.
-- Сломать check и получить сообщение в Telegram от `run_failure_sensor` `alert_on_run_failure` (включён по умолчанию,
-  опрос 30 с; без `ALERTS_ENABLED=true` + `TG_*` в `.env` — dry-run: текст в логе сенсора, Automation → sensor → tick):
+- Два сенсора, один канал (Automation → `alert_on_run_failure`, `alert_on_failed_check`; оба включены, опрос 30 с;
+  без `ALERTS_ENABLED=true` + `TG_*` в `.env` — dry-run: текст в логе тика):
+  - <u>run упал</u> → `run_failure_sensor`: blocking-check роняет `dq_job`, сообщение «run dq_job завершился с ошибкой»;
+  - <u>run зелёный, check провален</u> (`severity: warn` / non-blocking): `dq_job` SUCCESS, check жёлтый, но сообщение
+    «check … на mart_order_features провален (severity WARN), run зелёный» всё равно приходит — тихая деградация
+    качества не остаётся незамеченной.
 
 ```bash
 just tg-test "проверка канала"                    # заранее, до кадра: живое сообщение или dry-run
-just demo-break && just feature-mart && just dq   # → Telegram в течение ~30 с
+just demo-break && just feature-mart && just dq   # красный run → Telegram (~30 с)
+just demo-fix && just feature-mart && just dq
+just demo-break-warn && just feature-mart && just dq   # зелёный run, жёлтый check → Telegram (~30 с)
 just demo-fix && just feature-mart && just dq
 ```
 
