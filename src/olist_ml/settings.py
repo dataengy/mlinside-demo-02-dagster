@@ -16,7 +16,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Поля-пути: относительное значение из .env делается абсолютным относительно PROJECT_ROOT.
 _PATH_FIELDS = (
-    "DAGSTER_HOME",
     "DATA_DIR",
     "DUCKDB_PATH",
     "DBT_PROJECT_DIR",
@@ -55,7 +54,6 @@ class Settings(BaseSettings):
     DAGSTER_SCHEME: str = "http"
     DAGSTER_HOST: str = "127.0.0.1"
     DAGSTER_PORT: int = 3000
-    DAGSTER_HOME: Path = PROJECT_ROOT / ".dagster_home"
 
     # --- данные / DuckDB / dbt ---
     DATA_DIR: Path = PROJECT_ROOT / "data"

@@ -4,6 +4,14 @@
 
 ## MVP
 
+- [ ] M8 Финал — ветка `feat/m7-telegram-alert` — 2026-09-21 — хронометраж демо-команд (машинное время, snapshot
+  4 918 заказов, M2 MacBook): `demo-prepare` 29 с, `feature-mart` 14–17 с, `dq` 17–19 с, `train` 16 с, `promote` 10 с,
+  `score` 9–10 с, `demo-recompute` 17 с, `demo-break/fix/sql-change` 2–5 с; вся последовательность S1–S18
+  (17 команд) — 203 с ≈ 3,5 мин машинного времени, остальное из 30 мин — речь и UI. `just test-all`: 46 unit/smoke/
+  integration + 1 e2e зелёные (первый e2e-прогон упал из-за гонки с параллельным `demo-break` по общим SQL-файлам —
+  e2e и демо-команды нельзя запускать одновременно). Все `just`-рецепты из README/DEMO/runbook существуют.
+  Починено: относительный `DAGSTER_HOME` в `.env` ломал `dg launch`/`dg dev` (dagster CLI грузит `.env` из cwd поверх
+  окружения) — поле убрано из `Settings`/`.env.example`, владелец — Justfile; строка в runbook.
 - [ ] M7 Telegram-алерт — ветка `feat/m7-telegram-alert` — 2026-09-21 — `alerts/telegram.py` (`format_run_failure`,
   `send_telegram` одним `httpx.post`, dry-run без `ALERTS_ENABLED`/`TG_*`), `defs/automation/sensors.py`:
   `@dg.run_failure_sensor alert_on_run_failure` (все джобы, `default_status=RUNNING`, 30 с), `just tg-test [text]`;

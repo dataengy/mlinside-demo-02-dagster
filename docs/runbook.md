@@ -85,6 +85,7 @@ uv run dg dev
 | Freshness всегда UNKNOWN | демон freshness выключен | `dagster.yaml`: `freshness: {enabled: true}`; перезапуск `dg dev` |
 | Telegram-алерт не приходит | `ALERTS_ENABLED=false` (dry-run) или пустые `TG_*` | заполнить `.env`, `just tg-test`; лог сенсора `alert_on_run_failure` (Automation) |
 | Сенсор тикает SKIPPED «empty result» без лога после упавшего run | run без `remote_job_origin` (`dg launch`) отфильтрован по code location | `monitor_all_code_locations=True` в `@run_failure_sensor` |
+| `$DAGSTER_HOME ".dagster_home" must be an absolute path` при `dg launch`/`dg dev` | в `.env` задан относительный `DAGSTER_HOME`: dagster CLI подгружает `.env` из cwd поверх окружения | убрать `DAGSTER_HOME` из `.env` (его задаёт Justfile абсолютным) |
 | CI: `failed to fetch some objects from …/info/lfs` | LFS-объекты seeds не загружены на GitHub | `git lfs push --all origin` (нужен push-доступ) |
 | `just`: command not found | раннер не установлен | `brew install just` / `uv tool install rust-just` |
 
