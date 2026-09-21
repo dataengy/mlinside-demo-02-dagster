@@ -27,3 +27,7 @@ mlruns/
 # IDE
 .idea/
 .DS_Store
+
+# Локальные данные и артефакты (snapshot seeds живут в dbt/seeds/, не здесь)
+data/
+!data/README.md
