@@ -60,9 +60,44 @@ def send_telegram(
             client.close()
 
 
+def discover_chats(token: str, client: httpx.Client | None = None) -> list[tuple[str, str, str]]:
+    """getUpdates → уникальные (chat_id, type, title): бот должен быть в группе и видеть сообщение."""
+    if not token:
+        return []
+    own_client = client is None
+    client = client or httpx.Client(timeout=10.0)
+    try:
+        r = client.get(f"{TELEGRAM_API}/bot{token}/getUpdates")
+        seen: dict[str, tuple[str, str, str]] = {}
+        for upd in r.json().get("result", []):
+            msg = upd.get("message") or upd.get("my_chat_member") or upd.get("channel_post") or {}
+            chat = msg.get("chat") or {}
+            if chat.get("id") is not None:
+                cid = str(chat["id"])
+                seen[cid] = (
+                    cid,
+                    chat.get("type", ""),
+                    chat.get("title") or chat.get("username") or "",
+                )
+        return list(seen.values())
+    finally:
+        if own_client:
+            client.close()
+
+
 def main(argv: list[str]) -> int:
     from olist_ml.settings import settings
 
+    if argv[:1] == ["--chat-id"]:
+        chats = discover_chats(settings.TG_BOT_TOKEN)
+        if not chats:
+            print(
+                "чатов не видно: добавьте бота в группу и отправьте в ней сообщение, затем повторите"
+            )
+            return 1
+        for cid, kind, title in chats:
+            print(f"TG_CHAT_ID={cid}    # {kind} {title}")
+        return 0
     text = " ".join(argv) or "olist_ml: проверка Telegram-канала"
     res = send_telegram(text, settings.TG_BOT_TOKEN, settings.TG_CHAT_ID, settings.ALERTS_ENABLED)
     print(res)

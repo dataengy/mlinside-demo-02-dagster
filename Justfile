@@ -160,6 +160,10 @@ measure-gate:
 tg-test *text:
     uv run python -m olist_ml.alerts.telegram {{text}}
 
+# Узнать TG_CHAT_ID: добавить бота в группу, написать в ней любое сообщение, затем выполнить
+tg-chat-id:
+    uv run python -m olist_ml.alerts.telegram --chat-id
+
 # Перевести алиас champion на версию (по умолчанию — последняя): `just promote` | `just promote 2`
 promote version="":
     #!/usr/bin/env bash

@@ -64,6 +64,31 @@ def test_send_reports_http_error() -> None:
     assert not res.sent and res.status_code == 401 and "Unauthorized" in res.detail
 
 
+def test_discover_chats_dedups_by_chat_id() -> None:
+    from olist_ml.alerts.telegram import discover_chats
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.url.path.endswith("/getUpdates")
+        return httpx.Response(
+            200,
+            json={
+                "ok": True,
+                "result": [
+                    {"message": {"chat": {"id": -100777, "type": "supergroup", "title": "demo"}}},
+                    {"message": {"chat": {"id": -100777, "type": "supergroup", "title": "demo"}}},
+                    {"my_chat_member": {"chat": {"id": 42, "type": "private", "username": "u"}}},
+                ],
+            },
+        )
+
+    with _client(handler) as c:
+        assert discover_chats("tok", client=c) == [
+            ("-100777", "supergroup", "demo"),
+            ("42", "private", "u"),
+        ]
+    assert discover_chats("", client=c) == []
+
+
 def test_sensor_is_defined_and_running_by_default() -> None:
     import dagster as dg
 
