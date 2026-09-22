@@ -33,4 +33,5 @@ dagster-dbt 0.29.23, mlflow 3.15) и только потом попадает в
 - [ ] P6 `dbt source freshness` как asset checks; `INTEGRATIONS_STYLE=python`, `integrations_python/` — архив D1 D4 #dbt
 - [ ] P7 `docs/deploy/`: Hetzner VM и Dagster+ (Serverless/Hybrid), сравнительная таблица, mermaid — #docs
 - [ ] P8 Agentic BRD-watch: хук, скилл, субагент из `.claude/drafts/agentic/` — архив D13 #agentic
+- [ ] P9 Agentic backlog: разобрать черновики `.claude/.tmp/` (`md_label_blanklines.py`, `md_hardbreak.py`, `Justfile`, `README-revision.md`) и перенести/отрефакторить — скрипты → `scripts/utils/` (+ рецепты в корневой Justfile), правила разметки → skill (`/create-skill-candidate`), автопроверка `.md` → PostToolUse-hook, настройки → `config/config.yml:docs.markdown.refining`, память → `markdown-refining-style` — #agentic #docs
 - [ ] P10 Security: токен бота `@dagster_demo_bot` попал в текст чата (сессия 2026-09-21) — после демо перевыпустить через BotFather (`/revoke`), обновить `.env`; в репо токен не идёт (`.env` в `.gitignore`), в `.env.example` — только пустой `TG_BOT_TOKEN=` #security #observability

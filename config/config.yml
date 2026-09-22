@@ -1,0 +1,51 @@
+# Настройки проекта. Секции добавляются по мере надобности.
+docs:
+  markdown:
+    refining:
+      # Значения по умолчанию для каждого .md; переопределяются в files[].
+      defaults:
+        hard_break: backslash        # backslash | two_spaces | br — как рендерится перенос внутри абзаца
+        blank_line_between_paragraphs: true
+        max_line_width: 120
+        sequences:                   # цепочки этапов «a → b → c»
+          as: lines                  # lines (жёсткие переносы) | bullets | inline
+          stages_per_line: 2
+          continuation_prefix: "→ "
+        bullets:
+          use_only_for: [enumerations, parallel_options, checklists]   # не для переносов строк
+          never_for: [line_breaks, stage_sequences, single_sentence_splitting]
+          max_depth: 2               # bullet → sub-bullet, глубже — нельзя
+          subbullet_indent: 2
+        label_paragraphs:            # каждая метка — отдельный абзац (пустая строка перед ней)
+          - "**Контекст.**"
+          - "**Решение.**"
+          - "**Последствия.**"
+          - "**Факт"
+          - "**Реализовано"
+          - "**Проверено"
+        tables:
+          blank_line_before: true
+        blockquotes:
+          blank_quote_line_between_paragraphs: true   # пустая `>` между абзацами
+        preserve: [code_fences, mermaid, tables, front_matter]
+
+      # Правила для конкретных файлов/масок (первый совпавший + defaults).
+      files:
+        - path: docs/decisions.md
+          label_paragraphs_extra: ["**SWOT.**", "**Зачем.**", "**Сравнение", "**Что уточнить"]
+          sequences: {stages_per_line: 2}
+          notes: "ADR: контекст → решение → последствия; сюжет MVP — цепочка по 2 этапа в строке"
+        - path: docs/overview.md
+          sequences: {as: lines, stages_per_line: 3}
+        - path: DEMO.md
+          bullets: {max_depth: 2}
+        - path: README.md
+        - path: README-ru.md
+        - path: docs/**/*.md
+        - path: .claude/**/*.md
+          skip: [".claude/.archive/**", ".claude/.PROMPTS-LOG*.md"]
+
+      tools:                          # реализация (черновики, см. .claude/.tmp/Justfile)
+        check: "just -f .claude/.tmp/Justfile md-check {file}"
+        fix: "just -f .claude/.tmp/Justfile md-fix {file}"
+        hardbreak: "just -f .claude/.tmp/Justfile md-hardbreak {file} {start} {end}"
