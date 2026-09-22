@@ -1,3 +1,5 @@
+*.bak*
+
 # Python / uv
 .venv/
 __pycache__/
@@ -27,3 +29,13 @@ mlruns/
 # IDE
 .idea/
 .DS_Store
+
+# Локальные данные и артефакты (snapshot seeds живут в dbt/seeds/, не здесь)
+# data/* вместо data/ — иначе git не заходит внутрь каталога и !data/README.md ниже не работает.
+data/*
+!data/README.md
+
+# Черновики/scratch, не для коммита (попали в git через автосейв-коммит 2026-09-22, вычищено)
+.a-temp-*-from-scratch-/
+.claude/.tmp/
+.claude/-Users-*

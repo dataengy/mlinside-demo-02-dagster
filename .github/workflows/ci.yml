@@ -1,0 +1,65 @@
+# CI (ADR-11): шаги = рецепты Justfile, логики в YAML нет. Сеть нужна только `just install`
+# (uv sync, dbt deps); `check`/`test` работают офлайн на shipped snapshot (git-lfs) и фикстурах.
+# Секретов нет; Kaggle/Telegram не вызываются (алерт-сенсор в dry-run).
+name: ci
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: install · check · test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true # dbt/seeds/raw/*.csv — shipped snapshot в LFS (ADR-03)
+
+      - uses: extractions/setup-just@v3
+
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: just install
+        run: just install
+
+      - name: just check
+        run: just check
+
+      - name: just test
+        run: just test
+
+  e2e:
+    name: e2e · сквозной сюжет на snapshot
+    needs: ci
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: extractions/setup-just@v3
+
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: just install
+        run: just install
+
+      - name: just test-e2e
+        run: just test-e2e

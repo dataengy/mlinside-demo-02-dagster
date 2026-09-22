@@ -1,0 +1,25 @@
+# Совместимость пакетов с адаптерами — не абстрактная придирка, а то,
+# из-за чего проект падает на одном из таргетов. Подробности в docs/HW1-dbt.md.
+#
+#   dbt_utils               ClickHouse ✓  DuckDB ✓
+#   dbt_date                ClickHouse ~  DuckDB ✓   используем узко
+#   dbt_expectations        ClickHouse ~  DuckDB ✓   без regex и quantile-тестов
+#   dbt_project_evaluator   ClickHouse ✗  DuckDB ✓   включён только на duck
+#                                                    (dbt_project.yml → +enabled)
+#   elementary              ClickHouse ✗  DuckDB ✗   НЕ подключаем
+#
+# elementary есть в исходной формулировке задания, но он не поддерживает ни один
+# из наших таргетов — требование на 8–9 баллов переформулировано соответственно.
+
+packages:
+  - package: dbt-labs/dbt_utils
+    version: [">=1.3.0", "<2.0.0"]
+
+  - package: calogica/dbt_date
+    version: [">=0.10.0", "<1.0.0"]
+
+  - package: calogica/dbt_expectations
+    version: [">=0.10.0", "<1.0.0"]
+
+  - package: dbt-labs/dbt_project_evaluator
+    version: [">=0.14.0", "<1.0.0"]

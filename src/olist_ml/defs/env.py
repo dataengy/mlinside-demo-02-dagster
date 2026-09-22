@@ -1,0 +1,36 @@
+"""Единственное место, где настройки из settings передаются dbt через окружение.
+
+dbt-duckdb резолвит относительный `path` в profiles.yml от cwd процесса dbt (= dbt/), а `.env`
+хранит DUCKDB_PATH относительно корня проекта. Здесь путь делается абсолютным при загрузке
+definitions — и в `dg dev`, и в run-воркере (definitions загружаются в каждом). Justfile делает
+то же для CLI-рецептов (`export DUCKDB_PATH`). Явно заданный абсолютный DUCKDB_PATH (тесты,
+временные БД) не трогаем. Заодно dbt не ходит в сеть (version check → pypi, анонимная
+статистика) — dev/check/CI работают офлайн (ADR-04b).
+"""
+
+import os
+from pathlib import Path
+
+from olist_ml.settings import settings
+
+_current = os.environ.get("DUCKDB_PATH", "")
+if not _current or not Path(_current).is_absolute():
+    os.environ["DUCKDB_PATH"] = str(settings.DUCKDB_PATH)
+Path(os.environ["DUCKDB_PATH"]).parent.mkdir(parents=True, exist_ok=True)
+
+# dbt CLI сам читает DBT_PROJECT_DIR / DBT_PROFILES_DIR / DBT_TARGET_PATH и относительный путь берёт от каталога
+# проекта (dbt/), а `dg dev`/`dg launch` подгружают `.env` из cwd поверх окружения — относительное
+# `DBT_TARGET_PATH=dbt/target` из `.env` даёт `dbt/dbt/target`. Отдаём dbt абсолютные пути от корня проекта.
+for _name in ("DBT_PROJECT_DIR", "DBT_PROFILES_DIR", "DBT_TARGET_PATH"):
+    _value = os.environ.get(_name, "")
+    if _value and not Path(_value).is_absolute():
+        os.environ[_name] = str(getattr(settings, _name))
+
+os.environ.setdefault("DBT_TARGET", settings.DBT_TARGET)
+os.environ.setdefault("DBT_VERSION_CHECK", "false")
+# cautious: тест попадает в dbt build, только если все его родители в выборке; с eager (default) полный build
+# `+mart_order_features` тянет тесты канона на модели вне графа и падает Catalog Error (ADR-04, факт M4).
+# dagster-dbt переопределяет переменную на `empty` для run без checks — это и нужно.
+os.environ.setdefault("DBT_INDIRECT_SELECTION", "cautious")
+os.environ.setdefault("DBT_SEND_ANONYMOUS_USAGE_STATS", "false")
+os.environ.setdefault("MLFLOW_DISABLE_TELEMETRY", "true")

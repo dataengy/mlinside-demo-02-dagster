@@ -1,0 +1,23 @@
+# Ingestion — предпосылка, не демо (ADR-03): shipped snapshot raw-таблиц Olist грузится dbt seed
+# из dbt/seeds/raw/*.csv в схему raw. Ключи ассетов raw/<table> совпадают с meta.dagster.asset_key
+# в sources.yml (ADR-05), поэтому граф от raw до predictions связный. Модели dbt — отдельный
+# компонент defs/dbt (M2), он исключает path:seeds/raw.
+type: dagster_dbt.DbtProjectComponent
+
+attributes:
+  project:
+    project_dir: "{{ project_root }}/dbt"
+  select: "path:seeds/raw"
+  cli_args: [build]
+  # Свой op.name: оба компонента одного dbt-проекта иначе получают op `olist_dbt`, и граф не сшивается.
+  op:
+    name: raw_snapshot_seed
+  translation:
+    key: "raw/{{ node.name }}"
+    group_name: raw
+    description: "Сырая таблица Olist `{{ node.name }}` — snapshot, загруженный dbt seed (ADR-03)."
+    kinds: [duckdb]
+  # false (ADR-04b): prepare_if_dev при каждой загрузке definitions запускает `dbt deps`, а он ходит в
+  # hub.getdbt.com даже при установленных пакетах — dev/check/CI перестали бы работать офлайн.
+  # manifest.json собирает `just dbt-parse` (входит в install / check / dev), как для prod-артефакта.
+  prepare_if_dev: false
