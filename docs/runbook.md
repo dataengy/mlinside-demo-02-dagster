@@ -1,6 +1,6 @@
 # Runbook — установка, запуск, сбои
 
-> Операционный документ. Слайды показа — [`../DEMO.md`](../DEMO.md), план блоков — [`../DEMO-plan.md`](../DEMO-plan.md);
+> Операционный документ. Слайды показа — [`demo/`](../demo/README.md), план блоков — [`demo/`](../demo/README.md);
 > решения — [`decisions.md`](decisions.md).
 > Команды `just …` появляются по шагам [`../.claude/TODO.md`](../.claude/TODO.md); пометка **⚠ проверить** —
 > ещё не подтверждено на установленных версиях.
@@ -49,7 +49,7 @@ Snapshot (`dbt/seeds/raw/*.csv`, ~8 МБ) хранится через git-lfs: �
 | `just measure-gate` | порог gate по 5 сидам на текущей витрине |
 | `just demo-prepare` | подготовка raw и зависимостей; **не** обучает, **не** делает promotion |
 | `just demo-break` / `just demo-fix` / `just demo-sql-change` | заготовленные патчи для блоков 2 и 5 DEMO |
-| `just dbt-sync` | копия канонического dbt-проекта + overlay (`CANON=<path>` — источник; ADR-04) |
+| `just dbt-sync` | ⚠ временно отключено (`scripts/sync_dbt_from_canonical.sh` завершается с ошибкой) — `dbt/` упрощается до одной витрины `mart_order_features` + upstream, полный rsync из канона стёр бы урезанное дерево; см. `dbt/README.md` |
 | `just seeds-sample` | snapshot raw (`SNAPSHOT_N_ORDERS`) → `dbt/seeds/raw`, фикстуры → `tests/fixtures/raw`; вход — полные CSV Kaggle |
 | `just dbt-parse` | manifest.json (ADR-04b); после правки SQL — + Reload в UI |
 | `just clean raw|derived|all` | очистка данных (ADR-10): raw — схема raw; derived — dbt-схемы, snapshot ML, MLflow (эксперимент + реестр); `just clean-build` — только кеши сборки |

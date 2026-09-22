@@ -15,7 +15,7 @@
 
 ## Пересоздание и очистка
 
-- `just seed` (через `demo-prepare`/`feature-mart`, см. `Justfile`) — наполнить raw и построить витрины.
+- `just demo-prepare` — наполнить raw (нет рецепта `just seed`, несмотря на название); `just feature-mart` — построить витрины поверх raw.
 - `just train` — обучить модель, записать в `mlruns/` и `mlflow.db`.
 - `just clean raw|derived|all` — удалить данные по слоям (M5, ADR-10): `raw` только сырые таблицы,
   `derived` — производные (staging/intermediate/marts/ML-артефакты), `all` — всё.
