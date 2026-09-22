@@ -1,0 +1,15 @@
+# settings.yml — scripts/session-hooks (session hooks)
+session_hooks:
+  session-backlog:
+    enabled: true
+    desc: Reminds about undocumented/ad-hoc scripts in .claude/.tmp/ that lack a declared fate/promotion path, per session-artifacts-to-tmp
+    # Каталог, который сканируется на ad-hoc-артефакты (относительно корня репозитория).
+    tmp_dir: .claude/.tmp
+    # Файл с "fate"-строками (куда каждый артефакт поедет). Формат: одна строка на артефакт,
+    # `- <filename>: <fate>` (markdown-список); хук просто ищет `<filename>` в тексте файла.
+    backlog_file: .claude/.tmp/BACKLOG.md
+    # Файлы внутри tmp_dir, не требующие fate-строки (сам бэклог + служебные).
+    exempt:
+      - BACKLOG.md
+    # Сколько примеров показать в предупреждении.
+    preview: 5
