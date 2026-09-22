@@ -9,6 +9,12 @@
 # + dbt/seeds/raw/* + models/marts/mart_order_features.* (появятся на M2).
 set -euo pipefail
 
+# Временно отключено: dbt/ упрощается до одной витрины (mart_order_features) и её upstream —
+# полный rsync из канона поверх урезанного дерева стёр бы эту структуру. Тело скрипта ниже не
+# трогали — снять exit 1, когда синхронизация с каноном снова станет нужна.
+echo "sync_dbt_from_canonical.sh отключён: dbt/ упрощается до одной витрины + upstream, канон временно не источник правды" >&2
+exit 1
+
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 root="$(cd "$here/.." && pwd)"
 canon="${CANON:-$root/../mlinside-hw-olist/dbt}"

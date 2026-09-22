@@ -31,5 +31,6 @@ mlruns/
 .DS_Store
 
 # Локальные данные и артефакты (snapshot seeds живут в dbt/seeds/, не здесь)
-data/
+# data/* вместо data/ — иначе git не заходит внутрь каталога и !data/README.md ниже не работает.
+data/*
 !data/README.md
