@@ -27,18 +27,36 @@ main() {
   local tmp_path="$repo/$tmp_dir"
   [ -d "$tmp_path" ] || return 0
 
-  local backlog_text=""
-  [ -n "$backlog_file" ] && [ -f "$repo/$backlog_file" ] && backlog_text="$(cat "$repo/$backlog_file" 2>/dev/null)"
+  local backlog_path="$repo/$backlog_file"
+  [ -n "$backlog_file" ] && [ -f "$backlog_path" ] || backlog_path=""
 
-  local exempt
-  exempt="$(yq -r "$K.exempt[]" "$SETTINGS" 2>/dev/null)" || exempt=""
+  local -a exempt=()
+  while IFS= read -r line; do
+    [ -n "$line" ] && exempt+=("$line")
+  done < <(yq -r "$K.exempt[]" "$SETTINGS" 2>/dev/null)
 
   local -a orphans=()
-  local f base
+  local f base is_exempt e
   while IFS= read -r -d '' f; do
-    base="$(basename "$f")"
-    printf '%s\n' "$exempt" | grep -qxF "$base" && continue
-    printf '%s' "$backlog_text" | grep -qF "$base" && continue
+    base="$(basename -- "$f")"
+    is_exempt=0
+    for e in "${exempt[@]:-}"; do
+      [ "$e" = "$base" ] && { is_exempt=1; break; }
+    done
+    [ "$is_exempt" = 1 ] && continue
+    # Fate-строка — ровно "- <filename>:" в начале строки (наш заявленный формат в
+    # BACKLOG.md), не произвольное вхождение имени файла где-либо в тексте (issue:
+    # ложные срабатывания на упоминание в прозе/комментарии). Grep на файл напрямую
+    # (не через `printf | grep -q`) — конвейер с ранним выходом grep -q под pipefail
+    # может отдать SIGPIPE (141) от printf как статус всего пайплайна и создать
+    # ложноположительный "orphan" даже при найденном совпадении (issue).
+    # `--` перед паттерном/файлом — имя, начинающееся с `-`, иначе трактуется как опция (issue).
+    # Допускаем "- filename:" и "- `filename`:" (markdown code-span) — оба варианта
+    # встречаются в наших BACKLOG.md; -e с двумя fixed-string паттернами, не -E/regex
+    # (не хотим экранировать спецсимволы regex в произвольных именах файлов).
+    if [ -n "$backlog_path" ] && grep -qF -e "- ${base}:" -e "- \`${base}\`:" "$backlog_path" 2>/dev/null; then
+      continue
+    fi
     orphans+=("$base")
   done < <(find "$tmp_path" -maxdepth 1 -type f -print0 2>/dev/null)
 
