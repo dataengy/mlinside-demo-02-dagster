@@ -1,0 +1,4 @@
+[submodule "demo"]
+	path = demo
+	url = https://github.com/dataengy/mlinside-dagster-demo-demo.git
+	branch = main
