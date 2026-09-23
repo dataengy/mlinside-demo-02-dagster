@@ -1,0 +1,159 @@
+# demo/Justfile — рецепты четырёх демо (demo/README.md): 1 — Dagster с нуля · 2 — dbt · 3 — CI + Observability · 4 — ML.
+# Работает и отдельно (`just -f demo/Justfile --list`), и импортом в ./Justfile (`import 'demo/Justfile'`).
+# Пути — от этого файла (source_directory); рецепты основного проекта вызываются через demo_just.
+# Проверки шагов check-demo-N-step-X-{input,result} — в steps.just (генерируется: just demo-gen-steps).
+
+import 'steps.just'
+
+demo_dir := source_directory()
+demo_root := parent_directory(source_directory())
+demo_p1 := demo_dir / "olist_ml"
+demo_m1 := demo_dir / "materials" / "1"
+demo_m2 := demo_dir / "materials" / "2"
+demo_port := env("DAGSTER_PORT", "3000")
+demo_just := "just --justfile " + demo_root / "Justfile" + " --working-directory " + demo_root
+demo_steps := "uv run python demo/tests/steps.py"
+
+# ================= общие рецепты всех демо =================
+
+# Прогнать все шаги демо N командами из demo/N-2-run.md + проверки входа/результата: mode = bash | just
+demo-run n mode="bash":
+    cd "{{demo_root}}" && {{demo_steps}} run {{n}} --mode {{mode}}
+
+# Прогнать один шаг X демо N (команды из md + проверки): `just demo-run-step 4 3` | `just demo-run-step 4 3 just`
+demo-run-step n x mode="bash":
+    cd "{{demo_root}}" && {{demo_steps}} run {{n}} --step {{x}} --mode {{mode}}
+
+# Список всех шагов всех демо
+demo-steps:
+    cd "{{demo_root}}" && {{demo_steps}} list
+
+# Перегенерировать demo/steps.just (рецепты check-demo-N-step-X-*) из demo/tests/steps.py
+demo-gen-steps:
+    cd "{{demo_root}}" && {{demo_steps}} gen-just > demo/steps.just
+
+# ================= Демо 1 — Dagster с нуля (проект demo/olist_ml) =================
+
+# Демо 1: выгрузить витрину DuckDB → demo/data/*.parquet и удалить проект прошлой репетиции (нужна собранная витрина)
+demo-1-prepare: demo-1-reset
+    cd "{{demo_root}}" && uv run python demo/materials/1/export_mart.py demo/data/mart_order_features.parquet
+
+# Демо 1, D1-1: скаффолд проекта demo/olist_ml без вопросов (create-dagster + uv sync)
+demo-1-scaffold:
+    cd "{{demo_dir}}" && uvx create-dagster@1.13.23 project olist_ml --uv-sync
+
+# Демо 1, D1-1/D1-2: .envrc, зависимости (pandas/pyarrow/sklearn), features.py и parquet в проект
+demo-1-deps:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{demo_p1}}"
+    cp "{{demo_m1}}/envrc" .envrc && (direnv allow 2>/dev/null || true)
+    uv add pandas pyarrow scikit-learn
+    cp "{{demo_root}}/src/olist_ml/ml/features.py" src/olist_ml/features.py
+    mkdir -p data && cp "{{demo_dir}}/data/mart_order_features.parquet" data/
+
+# Демо 1, D1-2…D1-6: положить версию defs/ml.py — v1 | v2_metadata | v3_checks | v4_model_change
+demo-1-ml v:
+    cp "{{demo_m1}}/ml_{{v}}.py" "{{demo_p1}}/src/olist_ml/defs/ml.py"
+
+# Демо 1: Dagster UI проекта demo/olist_ml на DAGSTER_PORT (по умолчанию 3000)
+demo-1-dev:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{demo_p1}}"
+    export DAGSTER_HOME="$PWD/.dagster_home"; mkdir -p "$DAGSTER_HOME"
+    uv run dg dev --port "{{demo_port}}"
+
+# Демо 1: материализовать ассеты проекта — `just demo-1-launch` (все) | `just demo-1-launch 'model+'`
+demo-1-launch selection="*":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{demo_p1}}"
+    export DAGSTER_HOME="$PWD/.dagster_home"; mkdir -p "$DAGSTER_HOME"
+    uv run dg launch --assets '{{selection}}'
+
+# Демо 1, D1-5: красный quality_gate — порог 0.99 через run config (run падает ожидаемо)
+demo-1-gate-fail:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{demo_p1}}"
+    export DAGSTER_HOME="$PWD/.dagster_home"
+    uv run dg launch --assets model_evaluation --config-json "$(cat "{{demo_m1}}/gate_fail.json")" || true
+
+# Демо 1: удалить проект demo/olist_ml (перед репетицией/записью)
+demo-1-reset:
+    rm -rf "{{demo_p1}}"
+
+# Демо 1: смоук материалов — каждая версия ml_*.py материализуется in-process, gate краснеет на 0.99
+demo-1-test:
+    cd "{{demo_root}}" && uv run pytest -q demo/tests/test_materials_1.py
+
+# Демо 1: прогнать все шаги D1-1…D1-7 (mode = bash | just) с проверками
+demo-1-run mode="bash": (demo-run "1" mode)
+
+# Демо 1: проверка готовности (demo/1-1-prepare.md P1-5) + смоук материалов
+demo-1-check-ready: demo-1-test
+    cd "{{demo_root}}" && {{demo_steps}} ready 1
+
+# Демо 1: проверка итога (demo/1-3-results.md R1-2)
+demo-1-check-complete:
+    cd "{{demo_root}}" && {{demo_steps}} complete 1
+
+# ================= Демо 2 — dbt (корень репозитория) =================
+
+# Демо 2: сброс и состояние «до» — clean all → demo-prepare (raw, витрина + checks, baseline без алиаса)
+demo-2-prepare:
+    {{demo_just}} clean all
+    {{demo_just}} demo-prepare
+
+# Демо 2: прогнать все шаги D2-1…D2-8 (mode = bash | just) с проверками
+demo-2-run mode="bash": (demo-run "2" mode)
+
+# Демо 2: проверка готовности (demo/2-1-prepare.md P2-5) + just check
+demo-2-check-ready:
+    {{demo_just}} check
+    cd "{{demo_root}}" && {{demo_steps}} ready 2
+
+# Демо 2: проверка итога (demo/2-3-results.md R2-2)
+demo-2-check-complete:
+    cd "{{demo_root}}" && {{demo_steps}} complete 2
+
+# ================= Демо 3 — CI + Observability =================
+
+# Демо 3: состояние «до» — demo-2-prepare + feature-mart + dq (витрина и checks зелёные)
+demo-3-prepare: demo-2-prepare
+    {{demo_just}} feature-mart
+    {{demo_just}} dq
+
+# Демо 3: прогнать все шаги D3-1…D3-3 (mode = bash | just) с проверками
+demo-3-run mode="bash": (demo-run "3" mode)
+
+# Демо 3: проверка готовности (demo/3-1-prepare.md P3-5) + just check
+demo-3-check-ready:
+    {{demo_just}} check
+    cd "{{demo_root}}" && {{demo_steps}} ready 3
+
+# Демо 3: проверка итога (demo/3-3-results.md R3-2)
+demo-3-check-complete:
+    cd "{{demo_root}}" && {{demo_steps}} complete 3
+
+# ================= Демо 4 — ML =================
+
+# Демо 4: состояние «до» — demo-2-prepare + feature-mart + dq (baseline без алиаса, checks зелёные)
+demo-4-prepare: demo-3-prepare
+
+# Демо 4, D4-4: train_job с порогом gate 0.99 → quality_gate красный, model_registered не запускается
+demo-4-gate-fail:
+    cd "{{demo_root}}" && uv run dg launch --job train_job --config-json "$(cat "{{demo_m2}}/gate_fail.json")" || true
+
+# Демо 4: прогнать все шаги D4-1…D4-10 (mode = bash | just) с проверками
+demo-4-run mode="bash": (demo-run "4" mode)
+
+# Демо 4: проверка готовности (demo/4-1-prepare.md P4-5) + just check
+demo-4-check-ready:
+    {{demo_just}} check
+    cd "{{demo_root}}" && {{demo_steps}} ready 4
+
+# Демо 4: проверка итога (demo/4-3-results.md R4-3)
+demo-4-check-complete:
+    cd "{{demo_root}}" && {{demo_steps}} complete 4
