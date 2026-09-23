@@ -1,0 +1,4 @@
+# .envrc для demo/olist_ml (копируется в проект как .envrc; затем `direnv allow`)
+export DAGSTER_HOME="$PWD/.dagster_home"
+mkdir -p "$DAGSTER_HOME"
+source .venv/bin/activate
